@@ -425,7 +425,7 @@ const NewStickyHeader: React.FC<NewStickyHeaderProps> = ({ activePage, setActive
         <div className="flex flex-col items-center w-full max-w-6xl mx-auto px-6">
            <div className="flex justify-between items-center w-full"> 
             <div className="relative w-full h-16 md:h-20 my-2 flex-grow"> 
-              <NextImage src="/spyshop/Quantum Industries Logo.png" alt="Quantum Industries Full Logo" layout="fill" objectFit="contain" data-ai-hint="logo quantum full"/>
+              <NextImage src="/spyshop/Quantum Industries Icon Logo.png" alt="Quantum Industries Full Logo" layout="fill" objectFit="contain" data-ai-hint="logo quantum full"/>
             </div>
           </div>
           <div className="flex justify-center items-center space-x-4 w-full pb-2"> 

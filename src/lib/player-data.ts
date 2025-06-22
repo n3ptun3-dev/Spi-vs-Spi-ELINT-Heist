@@ -92,7 +92,6 @@ export async function createPlayer(
     faction: faction,
     stats: initialStats || { ...DEFAULT_PLAYER_STATS_FOR_NEW_PLAYER }, // Use default if not provided
     inventory: {
-      'pick_l1': { id: 'pick_l1', quantity: 1 },
       'cypher_lock_l1': { id: 'cypher_lock_l1', quantity: 4 }
     },
     vault: Array(8).fill(null).map((_, i) => ({ // Initialize with 8 empty slots (4 lock, 4 upgrade)
