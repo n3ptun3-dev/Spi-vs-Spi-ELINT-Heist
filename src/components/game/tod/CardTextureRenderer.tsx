@@ -52,15 +52,15 @@ export interface DisplayItem {
 // ============================================================================
 const CardProgressBar: React.FC<{ label?: string; current: number; max: number; colorVar: string }> = React.memo(({ label, current, max, colorVar }) => {
   const percentage = max > 0 ? Math.min(100, Math.max(0, (current / max) * 100)) : 0;
-  return (
-    <div className="w-full text-xs mt-auto px-1">
+  return (    
+    <div className="w-full mt-auto px-1"> {/* Removed text-xs here */}
       <div className="flex justify-between items-center text-[9px] opacity-80 mb-px">
         {label && <span className="text-left font-semibold">{label}</span>}
         <span className="text-right">{current}/{max}</span>
       </div>
-      <div className="h-1.5 rounded-full overflow-hidden w-full" style={{ backgroundColor: `hsla(var(--muted-hsl), 0.3)` }}>
+      <div className="rounded-full overflow-hidden w-full" style={{ height: '6px', backgroundColor: `hsla(var(--muted-hsl), 0.3)` }}> {/* Increased height */}
         <div className="h-full rounded-full" style={{ width: `${percentage}%`, backgroundColor: colorVar }} />
-      </div>
+      </div>      
     </div>
   );
 });
@@ -147,11 +147,11 @@ const CardVisuals: React.FC<CardVisualsProps> = ({ displayItem, outputWidth, out
     // Determine content based on stack type and item properties
     if (displayItem.stackType === 'individual') {
       if (isSingleUseType) {
-        detailContent = <p className="text-[9px] text-center font-semibold p-0.5 rounded bg-black/30 mt-auto mx-1" style={{ color: itemColorCssVar }}>Single Use</p>;
+        detailContent = <p className="text-[10px] text-center font-semibold p-0.5 rounded bg-black/30 mt-auto mx-1" style={{ color: itemColorCssVar }}>Single Use</p>;
       } else if (isPermanentType) {
-        detailContent = <p className="text-[9px] text-center font-semibold p-0.5 rounded bg-black/30 mt-auto mx-1" style={{ color: itemColorCssVar }}>Permanent</p>;
+        detailContent = <p className="text-[10px] text-center font-semibold p-0.5 rounded bg-black/30 mt-auto mx-1" style={{ color: itemColorCssVar }}>Permanent</p>;
       } else if (progressBarLabel && maxVal > 0) {
-        detailContent = <CardProgressBar label={progressBarLabel} current={currentVal} max={maxVal} colorVar={itemColorCssVar} />;
+        detailContent = <CardProgressBar label={progressBarLabel} current={currentVal} max={maxVal} colorVar={itemColorCssVar} />;      
       }
     } else if (progressBarLabel && maxVal > 0) { // For any stack that has a progress bar
       detailContent = <CardProgressBar label={progressBarLabel} current={currentVal} max={maxVal} colorVar={itemColorCssVar} />;
@@ -196,8 +196,8 @@ const CardVisuals: React.FC<CardVisualsProps> = ({ displayItem, outputWidth, out
                  <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent opacity-50" />
             </div>
             <div className="w-full px-1 py-0.5 flex flex-col justify-between flex-grow min-h-0">
-                <p className="text-[10px] font-semibold text-center leading-tight mb-0.5" style={{ color: itemColorCssVar }}>{title}</p>
-                <div className="w-full text-xs space-y-0.5 overflow-y-auto scrollbar-hide flex-grow mt-auto">{detailContent}</div>
+                <p className="text-[11px] font-semibold text-center leading-tight mb-0.5" style={{ color: itemColorCssVar }}>{title}</p>
+                <div className="w-full text-xs space-y-0.5 overflow-y-auto scrollbar-hide flex-grow mt-auto pb-1">{detailContent}</div>
             </div>
         </div>
     );
