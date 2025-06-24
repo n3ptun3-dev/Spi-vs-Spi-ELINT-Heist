@@ -286,14 +286,6 @@ export default function HomePage() {
         }}
       />
 
-      {/* Background overlay for the shop, when active */}
-      {isSpyShopOpen && (
-        <div
-          className="fixed inset-0 z-[9998] transition-colors duration-200 ease-in-out"
-          style={{ backgroundColor: `hsl(var(--primary-hsl) / 0.5)` }}
-        />
-      )}
-
       {/* The actual QuantumIndustries (Spy Shop) component, rendered conditionally */}
       {/* Its z-index is now controlled internally to be higher than the overlay */}
       {isSpyShopOpen && <QuantumIndustries key="quantum-industries-shop" />}
