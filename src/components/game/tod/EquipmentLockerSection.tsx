@@ -1,7 +1,8 @@
 // src/components/game/tod/EquipmentLockerSection.tsx
-// MODIFIED BY GEMINI (v35): Removed the getLevelColorVar helper function and
-//                           now directly accesses ITEM_LEVEL_COLORS_CSS_VARS
-//                           since constants.ts now includes mapping for Level 0.
+// MODIFIED BY GEMINI (v33): Refactored to import CardTextureRenderer (and indirectly CardVisuals)
+//                           from the external CardTextureRenderer.tsx file for modularity.
+//                           Adjusted handleCarouselItemClick to prevent TOD window flashing
+//                           by only calling closeTODWindow when expanding a stack.
 
 "use client";
 
@@ -14,7 +15,7 @@ import { useAppContext, type GameItemBase, type ItemLevel, type ItemCategory, ty
 import { HolographicButton, HolographicPanel } from '@/components/game/shared/HolographicPanel';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext'; 
-import { ITEM_LEVEL_COLORS_CSS_VARS } from '@/lib/constants'; // Now includes Level 0 mapping
+import { ITEM_LEVEL_COLORS_CSS_VARS } from '@/lib/constants';
 import { SHOP_CATEGORIES as APP_SHOP_CATEGORIES, getItemById as getBaseItemByIdFromGameItems } from '@/lib/game-items';
 import { ShoppingCart } from 'lucide-react'; 
 
@@ -39,9 +40,6 @@ const INITIAL_CAROUSEL_TARGET_COUNT = 8;
 interface SectionProps {
   parallaxOffset: number;
 }
-
-// Removed getLevelColorVar helper function, as it's no longer needed.
-
 
 // ============================================================================
 //  3D CAROUSEL COMPONENTS
@@ -313,370 +311,369 @@ Resizer.displayName = 'Resizer';
 export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset }) => {
     const { openTODWindow, closeTODWindow, playerInventory, getItemById, openSpyShop } = useAppContext();
     const { theme: currentGlobalTheme, themeVersion } = useTheme();
-    const [carouselDisplayItems, setCarouselDisplayItems] = useState<DisplayItem[]>([]); // Initialize with an empty array
-
+    const [carouselDisplayItems, setCarouselDisplayItems] = useState<DisplayItem[]>([]);
+    const [initialItems, setInitialItems] = useState<DisplayItem[]>([]);
+    const [pointLightColor, setPointLightColor] = useState<THREE.ColorRepresentation>('hsl(0, 0%, 100%)');
     const autoRotateRef = useRef(true);
+    const sectionRef = useRef<HTMLDivElement>(null);
 
-    const ITEM_CARD_RENDER_WIDTH = 256;
-    const ITEM_CARD_RENDER_HEIGHT = 427;
+    const { generateChildrenForItem, generateInitialView } = useMemo(() => {
+        const inventoryArray = Object.entries(playerInventory)
+            .map(([_, val]) => ({ invDetails: val, baseDef: getItemById(val.id) }))
+            .filter(item => item.baseDef && item.invDetails.quantity > 0) as Array<{
+              baseItem: any; invDetails: PlayerInventoryItem; baseDef: GameItemBase 
+}>;
 
-    const createIndividualDisplayItem = useCallback((invItem: PlayerInventoryItem, baseDef: GameItemBase): DisplayItem => {
-      return {
-        id: invItem.id,
-        baseItem: baseDef,
-        title: baseDef.title || baseDef.name + ' L' + baseDef.level,
-        quantityInStack: invItem.quantity,
-        imageSrc: baseDef.imageSrc || FALLBACK_IMAGE_SRC,
-        // Use direct access since constants.ts now handles ItemLevel 0
- colorVar: ITEM_LEVEL_COLORS_CSS_VARS[baseDef.level] || 'var(--level-1-color)',
-        levelForVisuals: baseDef.level,
-        stackType: 'individual',
-        path: [baseDef.category, baseDef.name, baseDef.level.toString(), invItem.id],
-        dataAiHint: baseDef.dataAiHint,
-        instanceCurrentStrength: invItem.currentStrength,
-        instanceMaxStrength: baseDef.strength?.max,
-        instanceCurrentCharges: invItem.currentCharges,
-        instanceMaxCharges: baseDef.maxCharges,
-        instanceCurrentUses: invItem.currentUses,
-        instanceMaxUses: baseDef.maxUses,
-        instanceCurrentAlerts: invItem.currentAlerts,
-        instanceMaxAlerts: baseDef.maxAlerts,
-      };
-    }, []);
+        const createIndividualDisplayItem = (invItemDetails: PlayerInventoryItem, baseDef: GameItemBase, path: string[], instanceIndex: number): DisplayItem => ({
+            id: `${invItemDetails.id}_instance_${instanceIndex}_${path.join('_')}`, 
+            baseItem: baseDef, 
+            title: baseDef.title || baseDef.name,
+            quantityInStack: 1, 
+            imageSrc: baseDef.tileImageSrc || baseDef.imageSrc || FALLBACK_IMAGE_SRC, // Use FALLBACK_IMAGE_SRC
+            colorVar: ITEM_LEVEL_COLORS_CSS_VARS[baseDef.level] || 'var(--level-1-color)',
+            levelForVisuals: baseDef.level, 
+            stackType: 'individual', 
+            path, 
+            dataAiHint: baseDef.dataAiHint, 
+            instanceCurrentStrength: invItemDetails.currentStrength,
+            instanceMaxStrength: baseDef.strength?.max, 
+            instanceCurrentCharges: (invItemDetails as any).currentCharges, 
+            instanceMaxCharges: (baseDef as any).maxCharges,
+            instanceCurrentUses: (invItemDetails as any).currentUses, 
+            instanceMaxUses: (baseDef as any).maxUses, 
+            instanceCurrentAlerts: (invItemDetails as any).currentAlerts,
+            instanceMaxAlerts: (baseDef as any).maxAlerts,
+        });
 
-    const createAggregatedStack = useCallback((items: { invDetails: PlayerInventoryItem; baseDef: GameItemBase }[], stackType: DisplayItem['stackType']): DisplayItem => {
-      const firstItem = items[0];
-      const aggregatedQuantity = items.reduce((sum, i) => sum + i.invDetails.quantity, 0);
+        const createAggregatedStack = (items: Array<{ invDetails: PlayerInventoryItem; baseDef: GameItemBase }>, stackIdPrefix: string, stackTitle: string, stackType: 'category' | 'itemType' | 'itemLevel', path: string[]): DisplayItem | null => {
+            if (items.length === 0) return null; 
+            
+            let highestLevelItem = items[0].baseDef; 
+            let totalQuantity = 0;
+            let aggCurrentStrength = 0, aggMaxStrength = 0, aggCurrentCharges = 0, aggMaxCharges = 0;
+            
+            items.forEach(({ invDetails, baseDef }) => { 
+                totalQuantity += invDetails.quantity; 
+                // Find the highest level item for the stack image
+                if (baseDef.level > highestLevelItem.level) {
+                    highestLevelItem = baseDef;
+                }
+                
+                aggCurrentStrength += (invDetails.currentStrength ?? 0) * invDetails.quantity; 
+                aggMaxStrength += (baseDef.strength?.max ?? 100) * invDetails.quantity;
+                aggCurrentCharges += ((invDetails as any).currentCharges ?? 0) * invDetails.quantity; 
+                aggMaxCharges += ((baseDef as any).maxCharges ?? 100) * invDetails.quantity;
+            });
 
-      let aggregateCurrentStrength: number | undefined = undefined;
-      let aggregateMaxStrength: number | undefined = undefined;
-      let aggregateCurrentCharges: number | undefined = undefined;
-      let aggregateMaxCharges: number | undefined = undefined;
+            const uniqueIdPart = path.join('_') || stackTitle.replace(/\s+/g, '_');
+            return {
+                id: `${stackIdPrefix}_${uniqueIdPart}`, 
+                baseItem: null, // Base item is null for aggregated stacks
+                title: stackTitle, 
+                quantityInStack: totalQuantity, 
+                // Use the image of the highest level item found in the stack
+                imageSrc: highestLevelItem.tileImageSrc || highestLevelItem.imageSrc || FALLBACK_IMAGE_SRC, 
+                colorVar: ITEM_LEVEL_COLORS_CSS_VARS[highestLevelItem.level] || 'var(--level-1-color)', 
+                levelForVisuals: highestLevelItem.level, 
+                aggregateCurrentStrength: aggCurrentStrength,
+                aggregateMaxStrength: aggMaxStrength, 
+                aggregateCurrentCharges: aggCurrentCharges, 
+                aggregateMaxCharges: aggMaxCharges, // Corrected: Should be aggMaxCharges here
+                stackType, 
+                path, 
+                dataAiHint: highestLevelItem.dataAiHint || stackTitle.toLowerCase(),
+            };
+        };
 
-      // Only aggregate if items have these properties
-      if (items.some(i => i.invDetails.currentStrength !== undefined)) {
-        aggregateCurrentStrength = items.reduce((sum, i) => sum + (i.invDetails.currentStrength ?? 0), 0);
-        aggregateMaxStrength = items.reduce((sum, i) => sum + (i.baseDef.strength?.max ?? 0), 0);
-      }
-      if (items.some(i => i.invDetails.currentCharges !== undefined)) {
-        aggregateCurrentCharges = items.reduce((sum, i) => sum + (i.invDetails.currentCharges ?? 0), 0);
-        aggregateMaxCharges = items.reduce((sum, i) => sum + (i.baseDef.maxCharges ?? 0), 0);
-      }
-      // Note: currentUses and currentAlerts are typically for individual items only, not aggregated.
+        const generateChildrenForItem = (item: DisplayItem): DisplayItem[] => {
+            console.log('generateChildrenForItem: called for item:', item.id, 'with stackType:', item.stackType, 'and path:', item.path);
+            const { stackType, path } = item; 
+            let children: DisplayItem[] = [];
+            
+            if (stackType === 'category') {
+                const categoryToExpand = path[0] as ItemCategory;
+                console.log('generateChildrenForItem: Expanding category:', categoryToExpand);
+                const itemsInExpandedCategory = inventoryArray.filter(i => i.baseDef.category === categoryToExpand);
+                console.log('generateChildrenForItem: Items in category:', itemsInExpandedCategory.map(i => i.baseDef.name));
 
-      let title: string;
-      let imageSrc: string;
-      let colorVar: string;
-      let levelForVisuals: ItemLevel;
-      let path: string[];
-      let dataAiHint: string | undefined;
+                const groupedByBaseName = itemsInExpandedCategory.reduce((acc, i) => { 
+                    (acc[i.baseDef.name] = acc[i.baseDef.name] || []).push(i); 
+                    return acc; 
+                }, {} as Record<string, typeof inventoryArray>);
+                
+                Object.entries(groupedByBaseName).forEach(([baseName, items]) => { 
+                    const stack = createAggregatedStack(items, 'itemType', baseName, 'itemType', [...path, baseName]); 
+                    if (stack) children.push(stack); 
+                });
+            } else if (stackType === 'itemType') {
+                const [category, baseName] = path; 
+                console.log('generateChildrenForItem: Expanding itemType:', baseName, 'in category:', category);
+                const itemsOfExpandedType = inventoryArray.filter(i => i.baseDef.category === category && i.baseDef.name === baseName);
+                console.log('generateChildrenForItem: Items of expanded type:', itemsOfExpandedType.map(i => `${i.baseDef.name} (Inv ID: ${i.invDetails.id})`));
 
-      switch (stackType) {
-        case 'category':
-          title = `${firstItem.baseDef.category} Items`;
-          imageSrc = APP_SHOP_CATEGORIES.find(cat => cat.id === firstItem.baseDef.category)?.iconImageSrc || FALLBACK_IMAGE_SRC;
-          // Use the highest level item's color for category stack, or Level 1 as fallback
-          const highestLevelItemCategory = items.reduce((prev, current) =>
-              (prev.baseDef.level > current.baseDef.level ? prev : current)
-          );
-          // Use direct access for color since constants.ts now handles ItemLevel 0
-          colorVar = ITEM_LEVEL_COLORS_CSS_VARS[highestLevelItemCategory.baseDef.level] || 'var(--level-1-color)';
-          levelForVisuals = highestLevelItemCategory.baseDef.level;
-          path = [firstItem.baseDef.category];
-          dataAiHint = `${firstItem.baseDef.category} overview`;
-          break;
-        case 'itemType':
-          const baseName = firstItem.baseDef.name.replace(/ L\d+$/, ''); // Remove level suffix
-          title = `${baseName} (All Levels)`;
-          imageSrc = firstItem.baseDef.tileImageSrc || firstItem.baseDef.imageSrc || FALLBACK_IMAGE_SRC;
-          // Use the highest level item's color for itemType stack
-          const highestLevelItemType = items.reduce((prev, current) =>
-              (prev.baseDef.level > current.baseDef.level ? prev : current)
-          );
-          // Use direct access for color since constants.ts now handles ItemLevel 0
-          colorVar = ITEM_LEVEL_COLORS_CSS_VARS[highestLevelItemType.baseDef.level] || 'var(--level-1-color)';
-          levelForVisuals = highestLevelItemType.baseDef.level;
-          path = [firstItem.baseDef.category, baseName];
-          dataAiHint = `${baseName} overview`;
-          break;
-        case 'itemLevel':
-          title = `${firstItem.baseDef.name} L${firstItem.baseDef.level} (x${aggregatedQuantity})`;
-          imageSrc = firstItem.baseDef.tileImageSrc || firstItem.baseDef.imageSrc || FALLBACK_IMAGE_SRC;
-          // Use direct access for color since constants.ts now handles ItemLevel 0
-          colorVar = ITEM_LEVEL_COLORS_CSS_VARS[firstItem.baseDef.level] || 'var(--level-1-color)';
-          levelForVisuals = firstItem.baseDef.level;
-          path = [firstItem.baseDef.category, firstItem.baseDef.name.replace(/ L\d+$/, ''), firstItem.baseDef.level.toString()];
-          dataAiHint = `${firstItem.baseDef.name} level ${firstItem.baseDef.level} stack`;
-          break;
-        default:
-          title = "Unknown Stack";
-          imageSrc = FALLBACK_IMAGE_SRC;
-          colorVar = 'var(--level-1-color)';
-          levelForVisuals = 1 as ItemLevel;
-          path = [];
-          dataAiHint = "unknown item stack";
-          break;
-      }
+                // Group items of the same base type by their specific inventory item ID (which implies level/instance)
+                const groupedByInvId = itemsOfExpandedType.reduce((acc, i) => {
+                    (acc[i.invDetails.id] = acc[i.invDetails.id] || []).push(i);
+                    return acc;
+                }, {} as Record<string, typeof inventoryArray>);
 
-      return {
-        id: `agg-${stackType}-${firstItem.baseDef.id.split('_l')[0]}-${firstItem.baseDef.level}`, // Example ID for aggregated item
-        baseItem: null, // Aggregated items don't have a single base item
-        title,
-        quantityInStack: aggregatedQuantity,
-        imageSrc,
-        colorVar,
-        levelForVisuals,
-        stackType,
-        path,
-        dataAiHint,
-        aggregateCurrentStrength,
-        aggregateMaxStrength,
-        aggregateCurrentCharges,
-        aggregateMaxCharges,
-      };
-    }, []);
-    
-
-    const currentViewPath = useRef<string[]>([]);
-    const [currentViewTitle, setCurrentViewTitle] = useState("Equipment Locker");
-
-    const navigateToView = useCallback((path: string[]) => {
-      autoRotateRef.current = true; // Always resume auto-rotate on navigation
-      console.log("Navigating to view:", path);
-      currentViewPath.current = path;
-      updateCarouselItems(); // Trigger update based on new path
-    }, []);
-
-    const navigateBack = useCallback(() => {
-      autoRotateRef.current = true; // Always resume auto-rotate on navigation
-      if (currentViewPath.current.length > 0) {
-        const newPath = currentViewPath.current.slice(0, -1);
-        currentViewPath.current = newPath;
-        updateCarouselItems(); // Trigger update
-      }
-    }, []);
-
-    const onItemClick = useCallback((displayItem: DisplayItem) => {
-      console.log("Item clicked:", displayItem);
-      autoRotateRef.current = false; // Pause auto-rotate on click
-      if (displayItem.stackType === 'individual') {
-        openTODWindow(
-          displayItem.title,
-          <div className="flex flex-col items-center p-4 text-center">
-            <h3 className="text-xl font-bold mb-2">{displayItem.title}</h3>
-            <img src={displayItem.imageSrc} alt={displayItem.title} className="w-32 h-32 object-contain mb-4" />
-            <p className="text-sm text-muted-foreground mb-1">{displayItem.baseItem?.description}</p>
-            <p className="text-xs text-muted-foreground mb-1">Level: {displayItem.levelForVisuals}</p>
-            <p className="text-xs text-muted-foreground mb-4">Quantity: {displayItem.quantityInStack}</p>
-            {displayItem.instanceCurrentStrength !== undefined && displayItem.instanceMaxStrength !== undefined && (
-              <p className="text-xs text-muted-foreground">Strength: {displayItem.instanceCurrentStrength}/{displayItem.instanceMaxStrength}</p>
-            )}
-            {displayItem.instanceCurrentCharges !== undefined && displayItem.instanceMaxCharges !== undefined && (
-              <p className="text-xs text-muted-foreground">Charges: {displayItem.instanceCurrentCharges}/{displayItem.instanceMaxCharges}</p>
-            )}
-             {displayItem.instanceCurrentUses !== undefined && displayItem.instanceMaxUses !== undefined && (
-              <p className="text-xs text-muted-foreground">Uses: {displayItem.instanceCurrentUses}/{displayItem.instanceMaxUses}</p>
-            )}
-             {displayItem.instanceCurrentAlerts !== undefined && displayItem.instanceMaxAlerts !== undefined && (
-              <p className="text-xs text-muted-foreground">Alerts: {displayItem.instanceCurrentAlerts}/{displayItem.instanceMaxAlerts}</p>
-            )}
-          </div>
-        );
-      } else {
-        navigateToView(displayItem.path);
-      }
-    }, [openTODWindow, navigateToView]);
-
-
-    const calculateCarouselRadius = useCallback((numItems: number) => {
-        if (numItems === 0) return 0;
-        if (numItems === 1) return 0.01; // Small non-zero radius for single item to be in center
+                Object.entries(groupedByInvId).forEach(([invId, items]) => {
+                    const firstItemInStack = items[0]; // All items in this group have the same invDetails.id
+                    console.log(`generateChildrenForItem: Processing invId: ${invId}, quantity: ${firstItemInStack.invDetails.quantity}`);
+                    if (firstItemInStack.invDetails.quantity > 1) {
+                        // If there's more than one of the exact same item instance, stack them by itemLevel
+                        const stack = createAggregatedStack(items, 'itemLevel', firstItemInStack.baseDef.title || firstItemInStack.baseItem?.name || firstItemInStack.baseDef.name, 'itemLevel', [...path, invId]);
+                        if (stack) children.push(stack);
+                    } else {
+                        // If quantity is 1, treat it as an individual item
+                        children.push(createIndividualDisplayItem(firstItemInStack.invDetails, firstItemInStack.baseDef, [...path, invId], 0));
+                    }
+                });
+            } else if (stackType === 'itemLevel') {
+                const invIdToExpand = path[path.length - 1];
+                console.log('generateChildrenForItem: Expanding itemLevel for invId:', invIdToExpand);
+                const itemToExpandDetails = inventoryArray.find(i => i.invDetails.id === invIdToExpand);
+                if (itemToExpandDetails) { 
+                    console.log('generateChildrenForItem: Found item details for invId:', itemToExpandDetails.baseDef.name, 'Quantity:', itemToExpandDetails.invDetails.quantity);
+                    for (let i = 0; i < itemToExpandDetails.invDetails.quantity; i++) {
+                        children.push(createIndividualDisplayItem(itemToExpandDetails.invDetails, itemToExpandDetails.baseDef, [...path], i)); 
+                    }
+                } else {
+                    console.warn('generateChildrenForItem: Could not find item details for invId:', invIdToExpand);
+                }
+            }
+            console.log('generateChildrenForItem: Returning children:', children.map(c => ({ id: c.id, title: c.title, stackType: c.stackType })));
+            return children.sort((a,b) => a.title.localeCompare(b.title));
+        };
         
-        // Calculate the circumference needed for items to be spaced out
-        // ITEM_WIDTH * CARD_SPACING_FACTOR gives us the desired arc length per item
-        const circumference = numItems * (ITEM_WIDTH * CARD_SPACING_FACTOR);
-        const radius = circumference / (2 * Math.PI);
-        return Math.max(MIN_RADIUS_FOR_TWO_ITEMS, radius);
-    }, []);
+        const generateInitialView = (): DisplayItem[] => {
+            const totalItems = inventoryArray.reduce((sum, item) => sum + item.invDetails.quantity, 0);
+            if (totalItems > 0 && totalItems <= INITIAL_CAROUSEL_TARGET_COUNT) {
+                 // Changed logic for initial view with few items:
+                 // Aggregate by invDetails.id first (which uniquely identifies an item type at a specific level/state)
+                 const itemStacks = inventoryArray.reduce((acc, item) => { 
+                     (acc[item.invDetails.id] = acc[item.invDetails.id] || []).push(item); 
+                     return acc; 
+                 }, {} as Record<string, typeof inventoryArray>);
 
-    const updateCarouselItems = useCallback(() => {
-      console.log("Updating carousel items for path:", currentViewPath.current);
-      const inventoryArray = Object.values(playerInventory);
-      let itemsForCurrentView: DisplayItem[] = [];
-      let newTitle = "Equipment Locker";
+                 return Object.values(itemStacks).map(itemsOfSameId => {
+                     const first = itemsOfSameId[0];
+                     if (first.invDetails.quantity > 1) {
+                         // If there's more than one of the exact same item instance, stack them by itemLevel
+                         return createAggregatedStack(itemsOfSameId, 'itemLevel', first.baseDef.title || first.baseDef.name, 'itemLevel', [first.baseDef.category, first.baseDef.name, first.invDetails.id])!;
+                     }
+                     // Otherwise, display as individual
+                     return createIndividualDisplayItem(first.invDetails, first.baseDef, [first.baseDef.category, first.baseDef.name, first.invDetails.id], 0);
+                 }).sort((a,b) => a.title.localeCompare(b.title));
+            } else if (inventoryArray.length > 0) {
+                 // For many items, start with categories
+                 return APP_SHOP_CATEGORIES.map(catInfo => createAggregatedStack(inventoryArray.filter(item => item.baseDef.category === catInfo.name), 'category', catInfo.name, 'category', [catInfo.name as ItemCategory]))
+                    .filter((item): item is DisplayItem => item !== null).sort((a,b) => a.title.localeCompare(b.title));
+            }
+            return [];
+        };
 
-      if (currentViewPath.current.length === 0) {
-        // Root view: Group by category
-        newTitle = "Equipment Locker";
-        const categories = new Set<ItemCategory>();
-        inventoryArray.forEach(invItem => {
-          const baseDef = getBaseItemByIdFromGameItems(invItem.id);
-          if (baseDef) categories.add(baseDef.category);
-        });
-
-        itemsForCurrentView = Array.from(categories).map(category => {
-          const categoryItems = inventoryArray.filter(invItem => {
-            const baseDef = getBaseItemByIdFromGameItems(invItem.id);
-            return baseDef && baseDef.category === category;
-          }).map(invItem => ({ invDetails: invItem, baseDef: getBaseItemByIdFromGameItems(invItem.id)! })); // ! because filter ensures baseDef exists
-          
-          if (categoryItems.length > 0) {
-            return createAggregatedStack(categoryItems, 'category');
-          }
-          return null;
-        }).filter(Boolean) as DisplayItem[];
-
-      } else if (currentViewPath.current.length === 1) {
-        // Category view: Group by itemType within category
-        const selectedCategory = currentViewPath.current[0] as ItemCategory;
-        newTitle = selectedCategory;
-        const itemTypes = new Set<string>(); // Base names without level
-        inventoryArray.filter(invItem => {
-          const baseDef = getBaseItemByIdFromGameItems(invItem.id);
-          return baseDef && baseDef.category === selectedCategory;
-        }).forEach(invItem => {
-          const baseDef = getBaseItemByIdFromGameItems(invItem.id)!;
-          itemTypes.add(baseDef.name.replace(/ L\d+$/, ''));
-        });
-
-        itemsForCurrentView = Array.from(itemTypes).map(itemType => {
-          const typeItems = inventoryArray.filter(invItem => {
-            const baseDef = getBaseItemByIdFromGameItems(invItem.id);
-            return baseDef && baseDef.category === selectedCategory && baseDef.name.replace(/ L\d+$/, '') === itemType;
-          }).map(invItem => ({ invDetails: invItem, baseDef: getBaseItemByIdFromGameItems(invItem.id)! }));
-          
-          if (typeItems.length > 0) {
-            return createAggregatedStack(typeItems, 'itemType');
-          }
-          return null;
-        }).filter(Boolean) as DisplayItem[];
-
-      } else if (currentViewPath.current.length === 2) {
-        // ItemType view: Group by itemLevel within itemType
-        const selectedCategory = currentViewPath.current[0] as ItemCategory;
-        const selectedItemType = currentViewPath.current[1];
-        newTitle = selectedItemType;
-
-        const itemLevels = new Set<ItemLevel>();
-        inventoryArray.filter(invItem => {
-          const baseDef = getBaseItemByIdFromGameItems(invItem.id);
-          return baseDef && baseDef.category === selectedCategory && baseDef.name.replace(/ L\d+$/, '') === selectedItemType;
-        }).forEach(invItem => {
-          const baseDef = getBaseItemByIdFromGameItems(invItem.id)!;
-          itemLevels.add(baseDef.level);
-        });
-
-        itemsForCurrentView = Array.from(itemLevels).sort((a, b) => a - b).map(level => {
-          const levelItems = inventoryArray.filter(invItem => {
-            const baseDef = getBaseItemByIdFromGameItems(invItem.id);
-            return baseDef && baseDef.category === selectedCategory && baseDef.name.replace(/ L\d+$/, '') === selectedItemType && baseDef.level === level;
-          }).map(invItem => ({ invDetails: invItem, baseDef: getBaseItemByIdFromGameItems(invItem.id)! }));
-          
-          if (levelItems.length > 0) {
-            return createAggregatedStack(levelItems, 'itemLevel');
-          }
-          return null;
-        }).filter(Boolean) as DisplayItem[];
-
-      } else if (currentViewPath.current.length === 3) {
-        // ItemLevel view: Show individual items
-        const selectedCategory = currentViewPath.current[0] as ItemCategory;
-        const selectedItemType = currentViewPath.current[1];
-        const selectedLevel = parseInt(currentViewPath.current[2], 10) as ItemLevel;
-        newTitle = `${selectedItemType} L${selectedLevel}`;
-
-        itemsForCurrentView = inventoryArray.filter(invItem => {
-          const baseDef = getBaseItemByIdFromGameItems(invItem.id);
-          return baseDef && baseDef.category === selectedCategory && baseDef.name.replace(/ L\d+$/, '') === selectedItemType && baseDef.level === selectedLevel;
-        }).map(invItem => {
-            const baseDef = getBaseItemByIdFromGameItems(invItem.id)!;
-            return createIndividualDisplayItem(invItem, baseDef);
-        });
-      }
-      
-      setCurrentViewTitle(newTitle);
-      setCarouselDisplayItems(itemsForCurrentView);
-    }, [playerInventory, createIndividualDisplayItem, createAggregatedStack]);
-
-
-    // Initial load and whenever playerInventory changes
+        return { generateChildrenForItem, generateInitialView };
+    }, [playerInventory, getItemById]);
+    
     useEffect(() => {
-      updateCarouselItems();
-    }, [playerInventory, updateCarouselItems]);
+        const items = generateInitialView();
+        console.log('useEffect (generateInitialView): Setting initial carousel display items:', items.map(i => i.id));
+        setCarouselDisplayItems(items);
+        setInitialItems(items);
+    }, [generateInitialView]);
 
-    const carouselRadius = useMemo(() => calculateCarouselRadius(carouselDisplayItems.length || INITIAL_CAROUSEL_TARGET_COUNT), [carouselDisplayItems.length, calculateCarouselRadius]);
+    useEffect(() => {
+        const currentSectionRef = sectionRef.current;
+        if (!currentSectionRef) return;
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                autoRotateRef.current = entry.isIntersecting; // Stop when not visible, start when visible
+                if (!entry.isIntersecting && carouselDisplayItems.length !== initialItems.length) {
+                    console.log('Observer: Section not intersecting and carousel expanded. Resetting to initial view.');
+                    setCarouselDisplayItems(initialItems); // Reset view
+                }
+            }, { threshold: 0.1 }
+        );
+        observer.observe(currentSectionRef);
+        return () => { observer.unobserve(currentSectionRef); };
+    }, [initialItems, carouselDisplayItems.length]);
+    
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const hslVarName = (currentGlobalTheme === 'cyphers' || currentGlobalTheme === 'shadows') ? '--primary-hsl' : '--accent-hsl';
+            const hslString = getComputedStyle(document.documentElement).getPropertyValue(hslVarName).trim();
+            if(hslString) {
+                // Fix for THREE.Color: "204 100% 50%" -> "hsl(204, 100%, 50%)
+                const parts = hslString.split(" ");
+                if (parts.length === 3) {
+                    const formattedHsl = `hsl(${parts[0]}, ${parts[1]}, ${parts[2]})`;
+                    setPointLightColor(formattedHsl);
+                }
+            }
+        }
+    }, [currentGlobalTheme, themeVersion]);
+    
+    const handleCarouselItemClick = useCallback((clickedItem: DisplayItem) => {
+        console.log('handleCarouselItemClick: Clicked item:', clickedItem.id, 'Stack Type:', clickedItem.stackType);
+        
+        if (clickedItem.stackType === 'individual') {
+            console.log('handleCarouselItemClick: Individual item clicked. Opening TOD Window.');
+            autoRotateRef.current = false;
+            // The closeTODWindow() call is removed here as it's now handled by AppContext
+            // to ensure no flashing when opening a new general TOD window.
+            openTODWindow(
+                clickedItem.baseItem?.title || "Item Details",
+                <div className="font-rajdhani p-4 text-center">
+                    <h3 className="text-xl font-bold mb-2" style={{ color: clickedItem.colorVar }}>{clickedItem.title}</h3>
+                    {/* Display the image in the TOD Window for individual items */}
+                    <img src={clickedItem.imageSrc || FALLBACK_IMAGE_SRC} alt={clickedItem.title} className="mx-auto my-4 max-w-[150px] object-contain"
+                         onError={(e) => {
+                            const target = e.currentTarget as HTMLImageElement;
+                            if (target.src !== `${window.location.origin}${FALLBACK_IMAGE_SRC}`) { target.src = `${window.location.origin}${FALLBACK_IMAGE_SRC}`; target.onerror = null; }
+                         }}
+                    />
+                    <HolographicButton onClick={closeTODWindow} className="mt-4" explicitTheme={currentGlobalTheme}>Close</HolographicButton>
+                </div>,
+                { showCloseButton: true, explicitTheme: currentGlobalTheme, themeVersion }
+            );
+        } else {
+            // If it's a stack, and we're expanding it, we want to close any existing TOD window
+            // because the user is navigating within the carousel, not viewing an item detail.
+            closeTODWindow(); 
+            console.log('handleCarouselItemClick: Stack clicked. Generating children.');
+            const children = generateChildrenForItem(clickedItem);
+            console.log('handleCarouselItemClick: Generated children:', children.map(c => c.id));
+            if (children.length > 0) {
+                 setCarouselDisplayItems(currentItems => {
+                     const itemIndex = currentItems.findIndex(item => item.id === clickedItem.id);
+                     if (itemIndex > -1) {
+                         const newItems = [...currentItems];
+                         newItems.splice(itemIndex, 1, ...children);
+                         console.log('handleCarouselItemClick: Updating carousel display items with new items. New array length:', newItems.length);
+                         return newItems;
+                     }
+                     console.warn('handleCarouselItemClick: Clicked item not found in current carousel items for replacement. This should not happen.');
+                     return currentItems; // Should ideally not happen if a valid item was clicked
+                 });
+            } else {
+                console.log('handleCarouselItemClick: No children generated for this stack. Not updating carousel display items.');
+            }
+        }
+    }, [generateChildrenForItem, openTODWindow, closeTODWindow, currentGlobalTheme, themeVersion]);
 
-    const handleOpenSpyShop = useCallback(() => {
-        console.log('Shop button clicked in EquipmentLockerSection. Opening Spy Shop.');
-        openSpyShop();
-    }, [openSpyShop]);
+    const dynamicCarouselRadius = useMemo(() => {
+        const numItems = carouselDisplayItems.length;
+        if (numItems <= 1) return 0;
+        if (numItems === 2) return MIN_RADIUS_FOR_TWO_ITEMS;
+        const circumference = numItems * (ITEM_WIDTH + (ITEM_WIDTH * (CARD_SPACING_FACTOR - 1)));
+        return Math.max(MIN_RADIUS_FOR_TWO_ITEMS, circumference / (2 * Math.PI));
+    }, [carouselDisplayItems.length]);
 
     return (
-        <div className="relative w-full max-w-full lg:max-w-4xl xl:max-w-6xl mx-auto min-h-[500px] sm:min-h-[600px] flex items-center justify-center p-2 z-10">
-            {/* Outward Border Glow Container */}
-            <div className="absolute inset-0 rounded-2xl p-px z-[11]" style={{
-                background: `linear-gradient(to bottom right, ${ITEM_LEVEL_COLORS_CSS_VARS[1]} 0%, transparent 50%, ${ITEM_LEVEL_COLORS_CSS_VARS[5]} 100%)`,
-                filter: `blur(15px) opacity(0.7)`, // Outward glow
-                pointerEvents: 'none',
-            }} />
-            
-            {/* Main Holographic Panel */}
-            <HolographicPanel
-                className="relative w-full h-[500px] sm:h-[600px] flex flex-col items-center justify-start overflow-hidden rounded-2xl z-10"
-                // No direct background color here, let HolographicPanel manage it
-            >
-                {/* Background Layer with inner glow effect */}
+        <div ref={sectionRef} className="flex flex-col h-full p-4 md:p-6"> {/* Removed overflow-hidden from this outer div */}
+            {/* New container for layering the background block and the HolographicPanel */}
+            {/* This parent now allows overflow for the HolographicPanel's shadow */}
+            <div className="relative w-full h-full flex flex-col items-center justify-center"> {/* Removed overflow-hidden from this intermediate div */}
 
-                <div className="absolute inset-0 rounded-2xl z-[1] flex items-center justify-center"
-                    style={{
-                        backgroundColor: '#0D1117', // Dark background for content
-                        boxShadow: `inset 0 0 10px hsla(var(--primary-hsl), 0.5), inset 0 0 20px hsla(var(--accent-hsl), 0.3)`, // Inner glow
-                    }}
-                >
-                    {/* Optional subtle yellow blurry glow behind the dark background */}
-                    <div className="absolute inset-0 rounded-2xl" style={{
-                        background: `radial-gradient(circle at center, hsla(var(--accent-hsl), 0.1) 0%, transparent 70%)`,
-                        filter: 'blur(50px)',
-                    }}></div>
+                {/* NEW: This is the element for the Holographic Panel's OUTWARD GLOW */}
+                {/* It sits directly behind the HolographicPanel but outside its overflow:hidden */}
+                <div className={cn(
+                    "absolute z-[11]", // Changed z-index to 11 to be on top of carousel
+                    "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
+                    "rounded-lg", // Match border-radius of HolographicPanel
+                    "pointer-events-none", // Ensures it doesn't interfere with clicks on the panel
+                    "max-w-4xl", // Match max-width of HolographicPanel
+                    "w-full mx-auto" // Match width properties
+                )}
+                style={{
+                    // These dimensions ensure the shadow div exactly matches the HolographicPanel
+                    // to give the appearance of an outward glow from the panel itself.
+                    height: '100%',
+                    // As max-w-4xl and w-full mx-auto handle width, explicit width is not always needed here,
+                    // but if you have a fixed height for HolographicPanel, you might need to adjust
+                    // this height and width to match exactly, or slightly larger for a stronger spread.
+                }}>
                 </div>
 
+                {/* Layer 0: The Blurry Yellow Glow Effect (behind everything) */}
+                <div className={cn(
+                    "absolute z-[-1] rounded-md", // Lower z-index to be behind the black block
+                    "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
+                    "bg-yellow-500", // The vibrant yellow glow, neutral to themes
+                    "filter blur-xl opacity-70" // Apply blur and adjust opacity for the glow effect
+                )}
+                style={{
+                    height: 'min(35vh, 450px)',
+                    minWidth: `calc(min(35vh, 450px) * 1.777)`,
+                    // Slightly larger to make the glow more pronounced around the black block
+                    transform: 'translate(-50%, -50%) scale(1.05)'
+                }}>
+                </div>
+                
+                {/* Layer 1: The Opaque Black Background Block (now with #0D1117) */}
+                {/* This block is still contained by the outer wrapper's dimensions implicitly. */}
+                <div className={cn(
+                    "absolute z-0 rounded-md",
+                    "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" // Center it
+                )}
+                style={{
+                    backgroundColor: '#0D1117', // The specific dark, off-black color
+                    height: 'min(35vh, 450px)', // Fixed height, capped to ensure it's not too large
+                    minWidth: `calc(min(35vh, 450px) * 1.777)`, // Ensure it's always at least 16:9 aspect ratio width
+                }}>
+                </div>
 
-                {/* Layer 2: Carousel Content & Controls */}
-                <div className="relative flex-grow w-full z-10 flex flex-col justify-between items-center p-3">
-                    {/* Navigation Buttons */}
-                    <div className="w-full flex justify-between items-center mb-2 px-4">
-                        {currentViewPath.current.length > 0 ? (
-                            <HolographicButton onClick={navigateBack} explicitTheme={currentGlobalTheme}>
-                                &lt; Back
-                            </HolographicButton>
-                        ) : <div className="w-[80px]"></div>} {/* Placeholder for alignment */}
+                {/* Layer 2: The Main Holographic Panel - sits on top of the background block */}
+                {/* Now has overflow-hidden applied directly to it to clip its *internal* content. */}
+                <HolographicPanel
+                    className={cn(
+                        "flex flex-col flex-grow rounded-lg relative z-10", // Panel is z-10, is relative for its children
+                        "border border-[var(--hologram-panel-border)]",
+                        // The inset shadow remains on the panel for internal glow, now 10px
+                        "shadow-[inset_0_0_10px_var(--hologram-glow-color)]",
+                        "bg-transparent", // Main panel background remains transparent
+                        "max-w-4xl",
+                        "w-full mx-auto",
+                        "overflow-hidden" // This clips content INSIDE the panel, but not its own shadow (which is now external)
+                    )}
+                    explicitTheme={currentGlobalTheme} >
+
+                    {/* Carousel Area (within HolographicPanel) - absolute inset-0 to fill panel content */}
+                    <div
+                        id="locker-carousel-canvas-container"
+                        className={cn(
+                            "absolute inset-0 z-10", // Fills the entire content area of HolographicPanel
+                            "flex flex-col justify-center items-center" // Centers the Canvas vertically
+                        )}
+                        style={{ cursor: 'grab', touchAction: 'none' }} >
                         
-                        <h3 className="text-xl font-orbitron holographic-text text-center flex-grow mx-2">
-                           {currentViewTitle}
-                        </h3>
-                        <div className="w-[80px]"></div> {/* Placeholder for alignment */}
-                    </div>
-
-                    {/* 3D Carousel Area */}
-                    <div id="locker-carousel-canvas-container" className="flex-grow w-full relative min-h-[300px] lg:min-h-[400px]">
                         {carouselDisplayItems.length > 0 ? (
-                            <Canvas camera={{ fov: INITIAL_CAMERA_FOV, position: [0, 0, CAMERA_BASE_Z_DISTANCE] }}
-                                className="!rounded-lg" // Apply rounded corners to the canvas
+                            <Canvas
+                                id="locker-carousel-canvas"
+                                camera={{ position: [0, 0, CAMERA_BASE_Z_DISTANCE], fov: INITIAL_CAMERA_FOV }}
+                                shadows gl={{ antialias: true, alpha: true }} style={{ background: 'transparent' }}
+                                onCreated={({ gl }) => { gl.setClearColor(0x000000, 0); }}
+                                className="relative w-full h-full" // Canvas fills its parent (locker-carousel-canvas-container)
                             >
-                                <ambientLight intensity={0.8} />
-                                <pointLight position={[10, 10, 10]} />
-                                <CameraManager carouselRadius={carouselRadius} />
-                                <EquipmentCarousel
-                                    itemsToDisplay={carouselDisplayItems}
-                                    onItemClick={onItemClick}
-                                    carouselRadius={carouselRadius}
-                                    autoRotateRef={autoRotateRef}
+                                <ambientLight intensity={1.2} />
+                                <directionalLight position={[5, 5, 5]} intensity={0.8} castShadow />
+                                <pointLight position={[-5, 5, 15]} intensity={1.5} color={pointLightColor} />
+                                <pointLight position={[0, -10, 0]} intensity={0.3} />
+                                <CameraManager carouselRadius={dynamicCarouselRadius} />
+                                {/* Added a key prop to force re-render/re-mount of EquipmentCarousel when items change */}
+                                <EquipmentCarousel 
+                                    key={carouselDisplayItems.map(item => item.id).join('-')} 
+                                    itemsToDisplay={carouselDisplayItems} 
+                                    onItemClick={handleCarouselItemClick} 
+                                    carouselRadius={dynamicCarouselRadius} 
+                                    autoRotateRef={autoRotateRef} 
                                 />
                                 <Resizer />
                             </Canvas>
                         ) : (
-                            <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center p-4">
-                                <p className="text-lg">Your locker is empty, Agent.</p>
+                            <div className="flex flex-col items-center justify-center w-full h-full">
+                                <p className="holographic-text text-lg">Locker Empty</p>
                                 <p className="text-muted-foreground text-sm">Visit the Spy Shop or Check In with HQ.</p>
                             </div>
                         )}
@@ -687,7 +684,10 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
                         <h2 className="text-2xl font-orbitron holographic-text">
                             Equipment Locker
                         </h2>
-                        <HolographicButton onClick={handleOpenSpyShop} className="!p-2" aria-label="Open Spy Shop" explicitTheme={currentGlobalTheme}>
+                        <HolographicButton onClick={() => {
+                            console.log('Shop button clicked in EquipmentLockerSection. Opening Spy Shop.');
+                            openSpyShop();
+                        }} className="!p-2" aria-label="Open Spy Shop" explicitTheme={currentGlobalTheme}>
                             <ShoppingCart className="w-5 h-5 icon-glow" />
                         </HolographicButton>
                     </div>  
@@ -696,8 +696,8 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
                     <p className="absolute bottom-0 left-0 w-full z-20 text-center text-xs text-muted-foreground p-3 md:p-4">
                         {carouselDisplayItems.length > 0 ? "Drag to rotate. Click stack to expand or item for details." : ""}
                     </p>
-                </div> {/* Closes "Layer 2: Carousel Content & Controls" (div from L642) */}
-            </HolographicPanel>
-        </div> {/* Closes "Main container" (div from L616) */}
+                </HolographicPanel>
+            </div>
+        </div>
     );
 };
