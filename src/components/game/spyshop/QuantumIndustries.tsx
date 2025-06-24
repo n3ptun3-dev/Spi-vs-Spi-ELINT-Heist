@@ -323,15 +323,6 @@ export function QuantumIndustries() {
         {activePage === 'products' && (
           <>
             <div
-              className="absolute inset-0 z-[1] pointer-events-none" 
-              style={{
-                backgroundImage: "url('/spyshop/bg_quantum_pattern.png')",
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                backgroundRepeat: 'no-repeat',
-              }}
-            />
-            <div
               className="absolute inset-0 z-[2] animate-pulse-grid pointer-events-none" 
               style={{
                 backgroundImage: "url('/spyshop/hexagons.png')",
