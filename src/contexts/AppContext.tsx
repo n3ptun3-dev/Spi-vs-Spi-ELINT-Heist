@@ -1,11 +1,14 @@
 // src/contexts/AppContext.tsx
+// MODIFIED BY GEMINI (v8): Consolidated and clarified type imports from game-items.ts.
+//                           Removed conflicting 'export type { ... } from' statements
+//                           to resolve "Cannot find name" errors and improve type resolution.
 
 "use client";
 
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import type { Theme } from './ThemeContext';
-import { useTheme } from './ThemeContext'; // Corrected: '=>' changed to 'from'
+import { useTheme } from './ThemeContext';
 import {
   initializePlayerData,
   getPlayer,
@@ -13,14 +16,22 @@ import {
   updatePlayer,
   type Player,
 } from '@/lib/player-data';
-import { getItemById, type ItemCategory, type GameItemBase, type PlayerInventoryItem, type VaultSlot, type ItemLevel, HardwareItem, InfiltrationGearItem } from '@/lib/game-items';
+// Directly import all necessary types from game-items.ts for internal use in AppContext.tsx
+import { getItemById, type VaultSlot, type HardwareItem, type InfiltrationGearItem, type ItemCategory, type GameItemBase, type ItemLevel, type PlayerInventoryItem, type LockFortifierItem } from '@/lib/game-items';
+
 import { CodenameInput } from '@/components/game/onboarding/CodenameInput';
 // Import the new master minigame mechanics
 import { getMinigameForLock, type MinigameArguments, MinigameType } from '@/lib/master-minigame-mechanics';
 // Import minigame components directly for rendering
-import QuantumCircuitWeaver from '@/components/game/minigames/QuantumCircuitWeaver';
+import QuantumCircuitWeaver from '@/components/game/minigames/QuantumCircuitWeaver'; 
 import KeyCracker from '@/components/game/minigames/KeyCracker';
 import { HolographicPanel, HolographicButton } from '@/components/game/shared/HolographicPanel';
+
+// Now, if other components (like EquipmentLockerSection or CardTextureRenderer) need these types,
+// they should import them directly from here (AppContext.tsx) or game-items.ts if they're not part of the context.
+// For now, they can continue importing from AppContext, and AppContext will properly resolve them.
+export type { ItemCategory, GameItemBase, ItemLevel, PlayerInventoryItem, LockFortifierItem };
+
 
 export type Faction = 'Cyphers' | 'Shadows' | 'Observer';
 export type OnboardingStep = 'welcome' | 'factionChoice' | 'authPrompt' | 'codenameInput' | 'fingerprint' | 'tod';
@@ -109,9 +120,9 @@ interface AppContextType {
   addItemToInventory: (itemId: string, quantity?: number, itemDetails?: Partial<Omit<PlayerInventoryItem, 'id' | 'quantity'>>) => Promise<void>;
   removeItemFromInventory: (itemId: string, quantity?: number) => Promise<void>;
   deployItemToVault: (slotId: string, itemId: string | null) => Promise<void>;
-  isSpyShopActive: boolean;
-  setIsSpyShopActive: (isActive: boolean) => void;
-  isSpyShopOpen: boolean;
+  isSpyShopActive: boolean; // This state is not directly controlled by openSpyShop/closeSpyShop but can be managed if needed
+  setIsSpyShopActive: (isActive: boolean) => void; // Keeping for flexibility, though not directly used for shop open/close now
+  isSpyShopOpen: boolean; // The primary state for shop visibility
   openSpyShop: () => void;
   closeSpyShop: () => void;
   shopSearchTerm: string;
@@ -166,8 +177,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [_todWindowTitle, _setTODWindowTitle] = useState('');
   const [_todWindowContent, _setTODWindowContent] = useState<ReactNode | null>(null);
   const [_todWindowOptions, _setTODWindowOptions] = useState<TODWindowOptions>({ showCloseButton: true });
-  const [_isSpyShopActive, _setIsSpyShopActive] = useState(false);
-  const [_isSpyShopOpen, _setIsSpyShopOpen] = useState(false);
+  const [_isSpyShopActive, _setIsSpyShopActive] = useState(false); // Keeping this but it's not the primary visibility toggle
+  const [_isSpyShopOpen, _setIsSpyShopOpen] = useState(false); // This is the primary visibility toggle for the shop
   const [_shopSearchTerm, _setShopSearchTerm] = useState('');
   const [_isShopAuthenticated, _setIsShopAuthenticated] = useState(false);
   const [_todInventoryContext, _setTodInventoryContext] = useState<AppContextType['todInventoryContext']>(null);
@@ -200,6 +211,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const openTODWindow = useCallback((title: string, content: ReactNode, options: TODWindowOptions = {}) => {
     _setTODWindowTitle(title);
     _setTODWindowContent(content);
+    // CRITICAL FIX: Ensure todInventoryContext is null when opening a general TOD window
+    _setTodInventoryContext(null); 
     const defaultShowCloseButton = options.showCloseButton === undefined ? true : options.showCloseButton;
     const themeToUseForWindow = options.explicitTheme || currentGlobalTheme || 'terminal-green';
     const versionToUseForWindow = options.explicitTheme ? (options.themeVersion === undefined ? themeVersion : options.themeVersion) : themeVersion;
@@ -209,7 +222,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         themeVersion: versionToUseForWindow
     });
     _setIsTODWindowOpen(true);
-  }, [currentGlobalTheme, themeVersion]);
+  }, [currentGlobalTheme, themeVersion, _setTodInventoryContext]); // Added _setTodInventoryContext to dependencies
 
   const attemptLoginWithPiId = useCallback(async (piId: string) => {
     _setIsLoading(true);
@@ -290,16 +303,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
           _setCurrentPlayer(player);
           if (player.faction === 'Observer') {
             _setOnboardingStep('tod');
-          } else if (player.spyName) {
-            _setOnboardingStep('fingerprint');
-          } else {
-             _setOnboardingStep('codenameInput');
-             const factionThemeForCodename = player.faction === 'Cyphers' ? 'cyphers' : player.faction === 'Shadows' ? 'shadows' : currentGlobalTheme;
-             openTODWindow(
-              "Agent Codename",
-              <CodenameInput explicitTheme={factionThemeForCodename} />,
-              { showCloseButton: false, explicitTheme: factionThemeForCodename, themeVersion }
-            );
+          } else { // Removed player.spyName check here
+             _setOnboardingStep('fingerprint'); // Assuming all non-observers go to fingerprint or codename
+             if (!player.spyName) { // If no spyName, go to codename input
+                 const factionThemeForCodename = player.faction === 'Cyphers' ? 'cyphers' : player.faction === 'Shadows' ? 'shadows' : currentGlobalTheme;
+                 openTODWindow(
+                  "Agent Codename",
+                  <CodenameInput explicitTheme={factionThemeForCodename} />,
+                  { showCloseButton: false, explicitTheme: factionThemeForCodename, themeVersion }
+                );
+             }
           }
         } else {
           if (typeof window !== "undefined") localStorage.removeItem('lastPlayerId');
@@ -660,13 +673,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addItemToInventory,
     removeItemFromInventory,
     deployItemToVault,
-    isSpyShopActive: _isSpyShopActive,
-    setIsSpyShopActive: (isActive: boolean) => _setIsSpyShopActive(isActive),
-    isSpyShopOpen: _isSpyShopOpen,
-    openSpyShop: () => _setIsSpyShopOpen(true),
-    closeSpyShop: () => _setIsSpyShopOpen(false),
+    isSpyShopActive: _isSpyShopActive, // Keeping for other potential uses
+    setIsSpyShopActive: (isActive: boolean) => {
+        console.log(`AppContext: setIsSpyShopActive called with ${isActive}`);
+        _setIsSpyShopActive(isActive);
+    },
+    isSpyShopOpen: _isSpyShopOpen, // Primary state for shop visibility
+    openSpyShop: () => {
+        console.log("AppContext: openSpyShop called. Setting isSpyShopOpen to TRUE.");
+        _setIsSpyShopOpen(true);
+    },
+    closeSpyShop: () => {
+        console.log("AppContext: closeSpyShop called. Setting isSpyShopOpen to FALSE.");
+        _setIsSpyShopOpen(false);
+    },
     shopSearchTerm: _shopSearchTerm,
-    setShopSearchTerm: _setShopSearchTerm,
+    setShopSearchTerm: (term: string) => {
+        _setShopSearchTerm(term);
+    },
     isShopAuthenticated: _isShopAuthenticated,
     setIsShopAuthenticated: (isAuthenticated: boolean) => _setIsShopAuthenticated(isAuthenticated),
     todInventoryContext: _todInventoryContext,
@@ -688,9 +712,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setFactionAppContext, setPlayerSpyNameAppContext, updatePlayerStatsAppContext, addXp, logout,
     updatePlayerInventoryItemStrength, spendElint, purchaseItem, addItemToInventory, removeItemFromInventory,
     deployItemToVault, openInventoryTOD, closeInventoryTOD, _setOnboardingStep, _setIsLoading,
-    _isSpyShopActive, _setShopSearchTerm, _setIsShopAuthenticated,
+    _isSpyShopActive, _isSpyShopOpen, _shopSearchTerm, _setShopSearchTerm, _isShopAuthenticated, _setIsShopAuthenticated,
     _isScrollLockActive, _setIsScrollLockActive,
-    _activeMinigame, openMinigame, closeMinigame // Include minigame state and functions
+    _activeMinigame, openMinigame, closeMinigame
   ]);
 
   return (

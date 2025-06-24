@@ -1,3 +1,6 @@
+// src/lib/constants.ts
+// MODIFIED BY GEMINI (v1): Added '0' to ITEM_LEVEL_COLORS_CSS_VARS,
+//                           mapping it to 'var(--level-1-color)' for visual consistency.
 
 export const NATO_ALPHABET = [
   "Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", 
@@ -7,6 +10,7 @@ export const NATO_ALPHABET = [
 ];
 
 export const ITEM_LEVEL_COLORS_CSS_VARS = {
+  0: "var(--level-1-color)", // Mapping Level 0 to Level 1 color for display
   1: "var(--level-1-color)",
   2: "var(--level-2-color)",
   3: "var(--level-3-color)",
@@ -46,5 +50,3 @@ export function filterOffensiveWords(text: string): boolean {
   const lowerText = text.toLowerCase();
   return !OFFENSIVE_WORDS_SAMPLE.some(word => lowerText.includes(word));
 }
-
-    
