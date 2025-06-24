@@ -207,7 +207,7 @@ function generateItemLevels<K extends GameItemBase>( // K is the specific item t
 
     // Use commonProps.category to correctly type `K` if it's `HardwareItem` etc.
     if (commonProps.category === 'Hardware') {
-      itemImageSrc = `/spyshop/items/hardware/${baseId}_l${effectiveLevel}.jpg`; // Use effectiveLevel for image path
+      itemImageSrc = `/spyshop/items/hardware/${baseId}_l${effectiveLevel}.png`; // Use effectiveLevel for image path
       itemTileImageSrc = itemImageSrc;
       itemDataAiHint = itemDataAiHint || `${baseName.toLowerCase().split(' ')[0]} lock`;
       
@@ -219,7 +219,7 @@ function generateItemLevels<K extends GameItemBase>( // K is the specific item t
       maxRechargeInitiations = effectiveLevel; // Use effectiveLevel here too
       perInitiationRechargeCost = Math.round((hardwareMaxStr / 5) * 0.2);
     } else if (commonProps.category === 'Infiltration Gear') {
-      itemImageSrc = `/spyshop/items/infiltration_gear/${baseId}_l${effectiveLevel}.jpg`; // Use effectiveLevel
+      itemImageSrc = `/spyshop/items/infiltration_gear/${baseId}_l${effectiveLevel}.png`; // Use effectiveLevel
       itemTileImageSrc = itemImageSrc;
       itemDataAiHint = itemDataAiHint || `${baseName.toLowerCase().split(' ')[0]} tool`;
       
@@ -232,7 +232,7 @@ function generateItemLevels<K extends GameItemBase>( // K is the specific item t
         currentUses = 1;
       }
     } else if (commonProps.category === 'Lock Fortifiers') {
-        itemImageSrc = `/spyshop/items/lock_fortifiers/${baseId}_l${effectiveLevel}.jpg`; // Use effectiveLevel
+        itemImageSrc = `/spyshop/items/lock_fortifiers/${baseId}_l${effectiveLevel}.png`; // Use effectiveLevel
         itemTileImageSrc = itemImageSrc;
         itemDataAiHint = itemDataAiHint || `${baseName.toLowerCase().split(' ')[0]} fortifier`;
         
@@ -249,7 +249,7 @@ function generateItemLevels<K extends GameItemBase>( // K is the specific item t
           currentCharges = 1;
         }
     } else if (commonProps.category === 'Nexus Upgrades') {
-        itemImageSrc = `/spyshop/items/nexus_upgrades/${baseId}_l${effectiveLevel}.jpg`; // Use effectiveLevel
+        itemImageSrc = `/spyshop/items/nexus_upgrades/${baseId}_l${effectiveLevel}.png`; // Use effectiveLevel
         itemTileImageSrc = itemImageSrc;
         itemDataAiHint = itemDataAiHint || `${baseName.toLowerCase().split(' ')[0]} upgrade`;
         
@@ -270,7 +270,7 @@ function generateItemLevels<K extends GameItemBase>( // K is the specific item t
              itemStrength = { current: nexusCurrentStrength ?? 0, max: nexusMaxStrength };
         }
     } else if (commonProps.category === 'Assault Tech') {
-        itemImageSrc = `/spyshop/items/assault_tech/${baseId}_l${effectiveLevel}.jpg`; // Use effectiveLevel
+        itemImageSrc = `/spyshop/items/assault_tech/${baseId}_l${effectiveLevel}.png`; // Use effectiveLevel
         itemTileImageSrc = itemImageSrc;
         itemDataAiHint = itemDataAiHint || `${baseName.toLowerCase().split(' ')[0]} tech`;
         maxUses = 1;

@@ -8,6 +8,15 @@
 // MODIFIED BY GEMINI (v42): Adjusted CardVisuals for 70% image height, 30% title height.
 //                           Removed padding around the image container.
 //                           Clarified 'object-contain' for aspect ratio and fitting.
+// MODIFIED BY GEMINI (v43): Removed 'truncate' class from title to allow wrapping.
+//                           Adjusted title container to align text to the top and left,
+//                           ensuring multi-line titles are not cut off.
+// MODIFIED BY GEMINI (v44): Centered the title horizontally and set its size to 'xl'.
+//                           Added a quantity indicator for stack cards in the top-right corner.
+// MODIFIED BY GEMINI (v45): Fixed the quantity indicator to be a perfect circle by setting equal width and height.
+//                           Ensured the quantity number is perfectly centered within the circle.
+// MODIFIED BY GEMINI (v46): Ensured vertical alignment for the quantity number within its circle
+//                           and added a 1px border matching the card's border color.
 
 "use client";
 
@@ -84,7 +93,7 @@ interface CardVisualsProps {
 }
 
 const CardVisuals: React.FC<CardVisualsProps> = ({ displayItem, outputWidth, outputHeight, preloadedImage }) => {
-    const { colorVar: itemColorCssVar, levelForVisuals, title } = displayItem; // Keep title for image alt text
+    const { colorVar: itemColorCssVar, levelForVisuals, title, quantityInStack } = displayItem; // Keep title for image alt text
 
     const cardBgClass = LEVEL_TO_BG_CLASS[levelForVisuals] || 'bg-muted/30';
     
@@ -122,11 +131,21 @@ const CardVisuals: React.FC<CardVisualsProps> = ({ displayItem, outputWidth, out
                 </div>
             )}
             {/* Card Title Area: takes remaining 30% height */}
-            <div className="w-full h-[30%] flex-shrink-0 flex items-center justify-center px-1 py-0.5"> {/* Padding adjusted for title text */}
-                <p className="text-2xl font-semibold truncate" style={{ color: itemColorCssVar }}>
+            <div className="w-full h-[30%] flex-shrink-0 flex flex-col items-center justify-center px-1 py-0.5 overflow-hidden"> {/* Changed to items-center justify-center for horizontal centering */}
+                <p className="text-xl font-semibold text-center" style={{ color: itemColorCssVar }}> {/* Changed text-2xl to text-xl and added text-center */}
                     {title}
                 </p>
             </div>
+
+            {/* Quantity Indicator for Stack Cards */}
+            {quantityInStack > 1 && (
+                <div 
+                    className="absolute top-1 right-1 bg-black/70 text-white text-sm font-bold rounded-full w-7 h-7 flex items-center justify-center border"
+                    style={{ borderColor: itemColorCssVar }} // Apply the border color from displayItem
+                >
+                    {quantityInStack}
+                </div>
+            )}
         </div>
     );
 };
