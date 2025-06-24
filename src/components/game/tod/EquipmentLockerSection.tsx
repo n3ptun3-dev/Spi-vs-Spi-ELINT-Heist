@@ -328,7 +328,7 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
         quantityInStack: invItem.quantity,
         imageSrc: baseDef.imageSrc || FALLBACK_IMAGE_SRC,
         // Use direct access since constants.ts now handles ItemLevel 0
-        colorVar: ITEM_LEVEL_COLORS_CSS_VARS[baseDef.level] || 'var(--level-1-color)',
+ colorVar: ITEM_LEVEL_COLORS_CSS_VARS[baseDef.level] || 'var(--level-1-color)',
         levelForVisuals: baseDef.level,
         stackType: 'individual',
         path: [baseDef.category, baseDef.name, baseDef.level.toString(), invItem.id],
@@ -622,15 +622,13 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
             
             {/* Main Holographic Panel */}
             <HolographicPanel
-                title="" // Title is rendered as overlay
-                explicitTheme={currentGlobalTheme}
-                themeVersion={themeVersion}
                 className="relative w-full h-[500px] sm:h-[600px] flex flex-col items-center justify-start overflow-hidden rounded-2xl z-10"
                 outerGlowClassName="filter blur-sm opacity-50"
                 innerGlowClassName="filter blur-md opacity-30"
                 // No direct background color here, let HolographicPanel manage it
             >
                 {/* Background Layer with inner glow effect */}
+
                 <div className="absolute inset-0 rounded-2xl z-[1] flex items-center justify-center"
                     style={{
                         backgroundColor: '#0D1117', // Dark background for content
@@ -641,7 +639,7 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
                     <div className="absolute inset-0 rounded-2xl" style={{
                         background: `radial-gradient(circle at center, hsla(var(--accent-hsl), 0.1) 0%, transparent 70%)`,
                         filter: 'blur(50px)',
-                    }} />
+                    }}></div>
                 </div>
 
 
