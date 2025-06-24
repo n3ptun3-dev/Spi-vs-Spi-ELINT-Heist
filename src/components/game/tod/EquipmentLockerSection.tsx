@@ -574,13 +574,13 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
         <div ref={sectionRef} className="flex flex-col h-full p-4 md:p-6"> {/* Removed overflow-hidden from this outer div */}
             {/* New container for layering the background block and the HolographicPanel */}
             {/* This parent now allows overflow for the HolographicPanel's shadow */}
-            <div className="relative w-full h-full flex flex-col items-center justify-center"> {/* Removed overflow-hidden from this intermediate div */}
+            <div className="relative w-full h-full flex flex-col items-center justify-center overflow-hidden"> {/* Re-added overflow-hidden here */}
 
                 {/* NEW: This is the element for the Holographic Panel's OUTWARD GLOW */}
                 {/* It sits directly behind the HolographicPanel but outside its overflow:hidden */}
                 <div className={cn(
                     "absolute z-[11]", // Changed z-index to 11 to be on top of carousel
-                    "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
+                    "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2", // Corrected centering
                     "rounded-lg", // Match border-radius of HolographicPanel
                     "pointer-events-none", // Ensures it doesn't interfere with clicks on the panel
                     "max-w-4xl", // Match max-width of HolographicPanel
@@ -599,7 +599,7 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
                 {/* Layer 0: The Blurry Yellow Glow Effect (behind everything) */}
                 <div className={cn(
                     "absolute z-[-1] rounded-md", // Lower z-index to be behind the black block
-                    "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
+                    "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2", // Centered
                     "bg-yellow-500", // The vibrant yellow glow, neutral to themes
                     "filter blur-xl opacity-70" // Apply blur and adjust opacity for the glow effect
                 )}
@@ -614,7 +614,8 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
                 {/* Layer 1: The Opaque Black Background Block (now with #0D1117) */}
                 {/* This block is still contained by the outer wrapper's dimensions implicitly. */}
                 <div className={cn(
-                    "absolute z-0 rounded-md",
+                    "overflow-hidden", // <--- Added overflow-hidden here
+                    "absolute z-0 rounded-md", // Increased z-index to 0
                     "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" // Center it
                 )}
                 style={{
