@@ -227,7 +227,7 @@ const CardTextureRenderer: React.FC<CardTextureRendererProps> = ({ displayItem, 
             tempDivRef.current.style.backgroundColor = 'transparent'; 
             document.body.appendChild(tempDivRef.current);
             reactRootRef.current = ReactDOM.createRoot(tempDivRef.current);
-            console.log(`CardTextureRenderer (${displayItem.title}): Temp div and root created.`);
+            // console.log(`CardTextureRenderer (${displayItem.title}): Temp div and root created.`);
         }
 
         const captureCard = async () => {
@@ -247,12 +247,12 @@ const CardTextureRenderer: React.FC<CardTextureRendererProps> = ({ displayItem, 
                 </React.StrictMode>
             );
 
-            console.log(`CardTextureRenderer (${displayItem.title}): Capturing CardVisuals with html2canvas (IMAGE NOW IN DOM).`);
+            // console.log(`CardTextureRenderer (${displayItem.title}): Capturing CardVisuals with html2canvas (IMAGE NOW IN DOM).`);
             reactRootRef.current.render(cardElement);
 
             // Give React a moment to render and for the image in the DOM to be ready
             // html2canvas works best when the images it needs to capture are fully loaded.
-            await new Promise(resolve => setTimeout(resolve, 100)); // Increased delay slightly for image rendering
+            await new Promise(resolve => setTimeout(resolve, 500)); // Increased delay slightly for image rendering
             
             try {
                 const canvas = await html2canvas(tempDivRef.current, {
