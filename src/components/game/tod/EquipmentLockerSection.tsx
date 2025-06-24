@@ -623,8 +623,6 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
             {/* Main Holographic Panel */}
             <HolographicPanel
                 className="relative w-full h-[500px] sm:h-[600px] flex flex-col items-center justify-start overflow-hidden rounded-2xl z-10"
-                outerGlowClassName="filter blur-sm opacity-50"
-                innerGlowClassName="filter blur-md opacity-30"
                 // No direct background color here, let HolographicPanel manage it
             >
                 {/* Background Layer with inner glow effect */}
@@ -698,8 +696,8 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
                     <p className="absolute bottom-0 left-0 w-full z-20 text-center text-xs text-muted-foreground p-3 md:p-4">
                         {carouselDisplayItems.length > 0 ? "Drag to rotate. Click stack to expand or item for details." : ""}
                     </p>
-                </HolographicPanel>
-            </div>
-        </div>
+                </div> {/* Closes "Layer 2: Carousel Content & Controls" (div from L642) */}
+            </HolographicPanel>
+        </div> {/* Closes "Main container" (div from L616) */}
     );
 };

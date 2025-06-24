@@ -2,7 +2,7 @@
 // This file acts as the central router for selecting and preparing minigames
 // based on the type of lock being attacked.
 
-import { HardwareItem, ItemLevel } from './game-items';
+import { HardwareItem, InfiltrationGearItem, ItemLevel, LockFortifierItem } from './game-items';
 // Importing specific minigame mechanics for type safety and data preparation
 // As you create more minigames, you'll import their specific logic here.
 import { type KeyCrackerState } from './minigames/key-cracker/logic'; // Future Key Cracker logic
@@ -26,7 +26,7 @@ export interface MinigameArguments {
  * @returns A MinigameArguments object containing the type of minigame and its initial props.
  */
 export function getMinigameForLock(
-  lock: HardwareItem,
+lock: HardwareItem, attackingTool: InfiltrationGearItem, fortifiers: LockFortifierItem[],
   // Future parameters to pass to minigame logic:
   // attackingTool: InfiltrationGearItem,
   // fortifiers: LockFortifierItem[],
