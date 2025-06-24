@@ -2,6 +2,12 @@
 // MODIFIED BY GEMINI and Louis (v39): Removed extraneous s from the code
 //                                    and corrected the import paths for 'cn' and 'ITEM_LEVEL_COLORS_CSS_VARS'.
 //                                    This should resolve all current build errors.
+// MODIFIED BY GEMINI (v40): Adjusted CardVisuals to remove padding and ensure image fills card while maintaining aspect ratio.
+// MODIFIED BY GEMINI (v41): Updated CardVisuals to display the image square at the top
+//                           with 'object-contain' and add the card title below it.
+// MODIFIED BY GEMINI (v42): Adjusted CardVisuals for 70% image height, 30% title height.
+//                           Removed padding around the image container.
+//                           Clarified 'object-contain' for aspect ratio and fitting.
 
 "use client";
 
@@ -85,7 +91,7 @@ const CardVisuals: React.FC<CardVisualsProps> = ({ displayItem, outputWidth, out
     return (
         <div 
             className={cn(
-                "w-full h-full flex flex-col items-center justify-center relative overflow-hidden",
+                "w-full h-full flex flex-col relative overflow-hidden", // Changed to flex-col to stack image and title
                 "rounded-lg border-2", 
                 cardBgClass 
             )}
@@ -96,28 +102,31 @@ const CardVisuals: React.FC<CardVisualsProps> = ({ displayItem, outputWidth, out
             }}
         >
             {preloadedImage ? (
-                // Render the image if preloadedImage is available
-                <img 
-                    src={preloadedImage.src} 
-                    alt={title} // Use title as alt text for accessibility
-                    className="w-full h-full object-contain p-2" // Adjust styling as needed
-                    style={{
-                        // Ensure image takes up appropriate space within the card
-                        // For now, let's try to fill the card as much as possible
-                        // You might need to adjust this once content is reintroduced
-                        width: 'calc(100% - 20px)', // 10px padding on each side
-                        height: 'calc(100% - 20px)', // 10px padding top/bottom
-                        objectFit: 'contain' // Ensures image fits within the bounds without cropping
-                    }}
-                />
+                // Image container: takes 70% height, no padding, flex to center image
+                // 'object-contain' on the img ensures it keeps its ratio and fits within this 70% area.
+                // If the image's aspect ratio is wider than the container, it will leave vertical gaps (empty space) on the sides.
+                // If the image's aspect ratio is taller, it will fill the width and leave horizontal gaps (empty space) at top/bottom.
+                <div className="relative w-full h-[70%] flex-shrink-0 flex items-center justify-center"> 
+                    <img 
+                        src={preloadedImage.src} 
+                        alt={title} // Use title as alt text for accessibility
+                        className="w-full h-full object-contain" // object-contain to keep ratio, fill container, but won't crop
+                    />
+                </div>
             ) : (
-                // Show "LOADING IMAGE..." if image is not yet preloaded
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <p className="text-white text-2xl font-bold opacity-50 select-none">
+                // "LOADING IMAGE..." container: also takes 70% height for consistent layout
+                <div className="w-full h-[70%] flex-shrink-0 flex items-center justify-center pointer-events-none">
+                    <p className="text-2xl font-bold opacity-50 select-none">
                         LOADING IMAGE...
                     </p>
                 </div>
             )}
+            {/* Card Title Area: takes remaining 30% height */}
+            <div className="w-full h-[30%] flex-shrink-0 flex items-center justify-center px-1 py-0.5"> {/* Padding adjusted for title text */}
+                <p className="text-2xl font-semibold truncate" style={{ color: itemColorCssVar }}>
+                    {title}
+                </p>
+            </div>
         </div>
     );
 };
