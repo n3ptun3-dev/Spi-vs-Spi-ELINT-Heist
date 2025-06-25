@@ -5,6 +5,22 @@
 //                           by only calling closeTODWindow when expanding a stack.
 // MODIFIED BY GEMINI (v48): Implemented rotation for a single card in the carousel on its own axis.
 //                           Added SINGLE_ITEM_ROTATION_SPEED and conditional rotation logic.
+// MODIFIED BY GEMINI (v49): Changed the CarouselItem material to render only the front side (THREE.FrontSide)
+//                           to prevent mirrored images when the single card rotates, ensuring the 'face forward' appearance.
+// MODIFIED BY GEMINI (v50): Fixed ReferenceError: invItemDetails to invDetails.
+//                           Enabled drag-to-rotate for a single card by adjusting interaction logic
+//                           to apply rotation directly to the single item's mesh when applicable.
+// MODIFIED BY GEMINI (v56): Restored previous working state for background and cards.
+//                           Introduced a new parent div with `overflow-hidden` to correctly clip
+//                           background elements (yellow glow, dark block).
+//                           Crucially, removed `overflow-hidden` from the HolographicPanel itself
+//                           to allow its `box-shadow` (from globals.css) to display as an outward glow.
+//                           Adjusted background elements to fill this new clipping parent.
+// MODIFIED BY GEMINI (v57): Reverted background element sizing to fixed/min-width and positioned
+//                           them absolutely within a new `overflow-hidden` wrapper.
+//                           Ensured the `HolographicPanel` itself does NOT have `overflow-hidden`
+//                           in its explicit `className` here, allowing its `box-shadow` from
+//                           `globals.css` to be fully visible as an outward glow.
 
 "use client";
 
@@ -290,7 +306,7 @@ const EquipmentCarousel: React.FC<{
             canvasElement.removeEventListener('pointerleave', resumeAutoRotate);
             if (interactionState.autoRotateTimeout) clearTimeout(interactionState.autoRotateTimeout);
         };
-    }, [gl, onItemClick, camera, raycaster, invalidate, appContext, autoRotateRef, interactionState, itemsToDisplay.length]); // Added itemsToDisplay.length dependency
+    }, [gl, onItemClick, camera, raycaster, invalidate, appContext, autoRotateRef, itemsToDisplay.length, interactionState]); // Added itemsToDisplay.length dependency
     
     useFrame((state, delta) => {
         // Only rotate the group if there's more than one item
@@ -605,81 +621,67 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
     }, [carouselDisplayItems.length]);
 
     return (
-        <div ref={sectionRef} className="flex flex-col h-full p-4 md:p-6"> {/* Removed overflow-hidden from this outer div */}
-            {/* New container for layering the background block and the HolographicPanel */}
-            {/* This parent now allows overflow for the HolographicPanel's shadow */}
-            <div className="relative w-full h-full flex flex-col items-center justify-center overflow-hidden"> {/* Re-added overflow-hidden here */}
+        <div ref={sectionRef} className="flex flex-col h-full p-4 md:p-6"> 
+            {/* Outer container for the entire section. No overflow-hidden here. */}
+            <div className="relative w-full h-full flex flex-col items-center justify-center"> 
 
-                {/* NEW: This is the element for the Holographic Panel's OUTWARD GLOW */}
-                {/* It sits directly behind the HolographicPanel but outside its overflow:hidden */}
+                {/* NEW WRAPPER FOR BACKGROUND ELEMENTS: This div holds and clips the yellow glow and dark block */}
+                {/* It's sized to match the max-width and will clip content overflowing its own bounds. */}
                 <div className={cn(
-                    "absolute z-[11]", // Changed z-index to 11 to be on top of carousel
-                    "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2", // Corrected centering
-                    "rounded-lg", // Match border-radius of HolographicPanel
-                    "pointer-events-none", // Ensures it doesn't interfere with clicks on the panel
-                    "max-w-4xl", // Match max-width of HolographicPanel
-                    "w-full mx-auto" // Match width properties
-                )}
-                style={{
-                    // These dimensions ensure the shadow div exactly matches the HolographicPanel
-                    // to give the appearance of an outward glow from the panel itself.
-                    height: '100%',
-                    // As max-w-4xl and w-full mx-auto handle width, explicit width is not always needed here,
-                    // but if you have a fixed height for HolographicPanel, you might need to adjust
-                    // this height and width to match exactly, or slightly larger for a stronger spread.
-                }}>
+                    "absolute inset-0 max-w-4xl mx-auto rounded-lg", // Match max-width of main panel
+                    "overflow-hidden", // This clips the yellow glow and dark block
+                    "z-0" // Ensure this is behind the HolographicPanel
+                )}>
+                    {/* Layer 0: The Blurry Yellow Glow Effect (behind everything) */}
+                    <div className={cn(
+                        "absolute rounded-md", // Removed inset-0 here
+                        "bg-yellow-500", 
+                        "filter blur-xl opacity-70"
+                    )}
+                    style={{
+                        height: 'min(35vh, 450px)', // Fixed height, capped
+                        minWidth: `calc(min(35vh, 450px) * 1.777)`, // Fixed minWidth (aspect ratio)
+                        left: '50%', // Center horizontally
+                        top: '50%', // Center vertically
+                        transform: 'translate(-50%, -50%) scale(1.05)' // Slightly larger for glow effect
+                    }} />
+                    
+                    {/* Layer 1: The Opaque Black Background Block */}
+                    <div className={cn(
+                        "absolute rounded-lg", // Removed inset-0 here
+                    )}
+                    style={{
+                        backgroundColor: '#0D1117', 
+                        height: 'min(35vh, 450px)', // Fixed height, capped
+                        minWidth: `calc(min(35vh, 450px) * 1.777)`, // Fixed minWidth (aspect ratio)
+                        left: '50%', // Center horizontally
+                        top: '50%', // Center vertically
+                        transform: 'translate(-50%, -50%)' // Center without scale
+                    }} />
                 </div>
 
-                {/* Layer 0: The Blurry Yellow Glow Effect (behind everything) */}
-                <div className={cn(
-                    "absolute z-[-1] rounded-md", // Lower z-index to be behind the black block
-                    "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2", // Centered
-                    "bg-yellow-500", // The vibrant yellow glow, neutral to themes
-                    "filter blur-xl opacity-70" // Apply blur and adjust opacity for the glow effect
-                )}
-                style={{
-                    height: 'min(35vh, 450px)',
-                    minWidth: `calc(min(35vh, 450px) * 1.777)`,
-                    // Slightly larger to make the glow more pronounced around the black block
-                    transform: 'translate(-50%, -50%) scale(1.05)'
-                }}>
-                </div>
-                
-                {/* Layer 1: The Opaque Black Background Block (now with #0D1117) */}
-                {/* This block is still contained by the outer wrapper's dimensions implicitly. */}
-                <div className={cn(
-                    "overflow-hidden", // <--- Added overflow-hidden here
-                    "absolute z-0 rounded-md", // Increased z-index to 0
-                    "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" // Center it
-                )}
-                style={{
-                    backgroundColor: '#0D1117', // The specific dark, off-black color
-                    height: 'min(35vh, 450px)', // Fixed height, capped to ensure it's not too large
-                    minWidth: `calc(min(35vh, 450px) * 1.777)`, // Ensure it's always at least 16:9 aspect ratio width
-                }}>
-                </div>
-
-                {/* Layer 2: The Main Holographic Panel - sits on top of the background block */}
-                {/* Now has overflow-hidden applied directly to it to clip its *internal* content. */}
+                {/* Layer 2: The Main Holographic Panel - positioned ON TOP of the background wrapper */}
+                {/* IMPORTANT: No `overflow-hidden` directly on HolographicPanel here. */}
+                {/* Its `box-shadow` from `globals.css` will now render fully. */}
                 <HolographicPanel
                     className={cn(
-                        "flex flex-col flex-grow rounded-lg relative z-10", // Panel is z-10, is relative for its children
+                        "absolute inset-0", // Positions over the background container, filling its space
+                        "flex flex-col flex-grow rounded-lg relative z-10", 
                         "border border-[var(--hologram-panel-border)]",
-                        // The inset shadow remains on the panel for internal glow, now 10px
-                        "shadow-[inset_0_0_10px_var(--hologram-glow-color)]",
-                        "bg-transparent", // Main panel background remains transparent
-                        "max-w-4xl",
-                        "w-full mx-auto",
-                        "overflow-hidden" // This clips content INSIDE the panel, but not its own shadow (which is now external)
+                        // Removed `shadow-[inset_0_0_10px_var(--hologram-glow-color)]` and `drop-shadow`
+                        // as these are handled by the .holographic-panel class in globals.css.
+                        "bg-transparent", 
+                        "w-full h-full" // Ensure it fills the new clipping wrapper
                     )}
                     explicitTheme={currentGlobalTheme} >
 
-                    {/* Carousel Area (within HolographicPanel) - absolute inset-0 to fill panel content */}
+                    {/* Carousel Area (within HolographicPanel) - MUST handle its own overflow-hidden */}
                     <div
                         id="locker-carousel-canvas-container"
                         className={cn(
-                            "absolute inset-0 z-10", // Fills the entire content area of HolographicPanel
-                            "flex flex-col justify-center items-center" // Centers the Canvas vertically
+                            "absolute inset-0 z-10", 
+                            "flex flex-col justify-center items-center",
+                            "overflow-hidden" // This clips the carousel content INSIDE the panel
                         )}
                         style={{ cursor: 'grab', touchAction: 'none' }} >
                         
@@ -689,14 +691,13 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
                                 camera={{ position: [0, 0, CAMERA_BASE_Z_DISTANCE], fov: INITIAL_CAMERA_FOV }}
                                 shadows gl={{ antialias: true, alpha: true }} style={{ background: 'transparent' }}
                                 onCreated={({ gl }) => { gl.setClearColor(0x000000, 0); }}
-                                className="relative w-full h-full" // Canvas fills its parent (locker-carousel-canvas-container)
+                                className="relative w-full h-full" 
                             >
                                 <ambientLight intensity={1.2} />
                                 <directionalLight position={[5, 5, 5]} intensity={0.8} castShadow />
                                 <pointLight position={[-5, 5, 15]} intensity={1.5} color={pointLightColor} />
                                 <pointLight position={[0, -10, 0]} intensity={0.3} />
                                 <CameraManager carouselRadius={dynamicCarouselRadius} />
-                                {/* Added a key prop to force re-render/re-mount of EquipmentCarousel when items change */}
                                 <EquipmentCarousel 
                                     key={carouselDisplayItems.map(item => item.id).join('-')} 
                                     itemsToDisplay={carouselDisplayItems} 
