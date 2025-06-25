@@ -17,6 +17,7 @@
 //                           Ensured the quantity number is perfectly centered within the circle.
 // MODIFIED BY GEMINI (v46): Ensured vertical alignment for the quantity number within its circle
 //                           and added a 1px border matching the card's border color.
+// MODIFIED BY GEMINI (v47): Increased the size of the quantity indicator circle and adjusted the text size for better centering.
 
 "use client";
 
@@ -140,7 +141,7 @@ const CardVisuals: React.FC<CardVisualsProps> = ({ displayItem, outputWidth, out
             {/* Quantity Indicator for Stack Cards */}
             {quantityInStack > 1 && (
                 <div 
-                    className="absolute top-1 right-1 bg-black/70 text-white text-sm font-bold rounded-full w-7 h-7 flex items-center justify-center border"
+                    className="absolute top-1 right-1 bg-black/70 text-white text-base font-bold rounded-full w-8 h-8 flex items-center justify-center border"
                     style={{ borderColor: itemColorCssVar }} // Apply the border color from displayItem
                 >
                     {quantityInStack}
@@ -227,7 +228,7 @@ const CardTextureRenderer: React.FC<CardTextureRendererProps> = ({ displayItem, 
             tempDivRef.current.style.backgroundColor = 'transparent'; 
             document.body.appendChild(tempDivRef.current);
             reactRootRef.current = ReactDOM.createRoot(tempDivRef.current);
-            // console.log(`CardTextureRenderer (${displayItem.title}): Temp div and root created.`);
+            console.log(`CardTextureRenderer (${displayItem.title}): Temp div and root created.`);
         }
 
         const captureCard = async () => {
@@ -247,12 +248,12 @@ const CardTextureRenderer: React.FC<CardTextureRendererProps> = ({ displayItem, 
                 </React.StrictMode>
             );
 
-            // console.log(`CardTextureRenderer (${displayItem.title}): Capturing CardVisuals with html2canvas (IMAGE NOW IN DOM).`);
+            console.log(`CardTextureRenderer (${displayItem.title}): Capturing CardVisuals with html2canvas (IMAGE NOW IN DOM).`);
             reactRootRef.current.render(cardElement);
 
             // Give React a moment to render and for the image in the DOM to be ready
             // html2canvas works best when the images it needs to capture are fully loaded.
-            await new Promise(resolve => setTimeout(resolve, 500)); // Increased delay slightly for image rendering
+            await new Promise(resolve => setTimeout(resolve, 100)); // Increased delay slightly for image rendering
             
             try {
                 const canvas = await html2canvas(tempDivRef.current, {

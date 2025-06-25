@@ -3,6 +3,8 @@
 //                           from the external CardTextureRenderer.tsx file for modularity.
 //                           Adjusted handleCarouselItemClick to prevent TOD window flashing
 //                           by only calling closeTODWindow when expanding a stack.
+// MODIFIED BY GEMINI (v48): Implemented rotation for a single card in the carousel on its own axis.
+//                           Added SINGLE_ITEM_ROTATION_SPEED and conditional rotation logic.
 
 "use client";
 
@@ -28,6 +30,7 @@ const ITEM_HEIGHT = 1.3;
 const CAMERA_BASE_Z_DISTANCE = 2;
 const INITIAL_CAMERA_FOV = 55;
 const ROTATION_SPEED = 0.0035;
+const SINGLE_ITEM_ROTATION_SPEED = 0.01; // Speed for single card rotation
 const CLICK_DRAG_THRESHOLD_SQUARED = 10 * 10; // Threshold for pixel movement to be considered a drag (10px * 10px)
 const CLICK_DURATION_THRESHOLD = 250; // Max duration for a touch/click to be considered a click (ms)
 const AUTO_ROTATE_RESUME_DELAY = 3000; // Delay before auto-rotate resumes after user interaction
@@ -55,9 +58,16 @@ const CameraManager: React.FC<{ carouselRadius: number }> = React.memo(({ carous
 });
 CameraManager.displayName = 'CameraManager';
 
-const CarouselItem = React.memo(function CarouselItem({ displayItem, index, totalItems, carouselRadius }: {
-    displayItem: DisplayItem; index: number; totalItems: number; carouselRadius: number;
-}) {
+interface CarouselItemProps {
+    displayItem: DisplayItem;
+    index: number;
+    totalItems: number;
+    carouselRadius: number;
+    autoRotateRef: React.MutableRefObject<boolean>; // Add this prop
+    isSingleItem: boolean; // Add this prop
+}
+
+const CarouselItem = React.memo(function CarouselItem({ displayItem, index, totalItems, carouselRadius, autoRotateRef, isSingleItem }: CarouselItemProps) {
     const meshRef = useRef<THREE.Mesh>(null!);
     const [texture, setTexture] = useState<THREE.CanvasTexture | null>(null);
 
@@ -78,6 +88,7 @@ const CarouselItem = React.memo(function CarouselItem({ displayItem, index, tota
     
     useLayoutEffect(() => {
         if (meshRef.current) {
+            // Position the item. For a single item, it will be at the center of the group.
             const angle = totalItems > 1 ? (index / totalItems) * Math.PI * 2 : 0;
             const x = carouselRadius * Math.sin(angle);
             const z = carouselRadius * Math.cos(angle);
@@ -88,7 +99,18 @@ const CarouselItem = React.memo(function CarouselItem({ displayItem, index, tota
     }, [index, totalItems, carouselRadius, displayItem]);
 
     useFrame(({ camera }) => {
-        if (meshRef.current) meshRef.current.lookAt(camera.position);
+        if (meshRef.current) {
+            if (isSingleItem) {
+                // If it's the only item, rotate on its own Y-axis if auto-rotate is active
+                if (autoRotateRef.current) {
+                    meshRef.current.rotation.y += SINGLE_ITEM_ROTATION_SPEED;
+                }
+                // No need to look at camera for single item spinning on its axis
+            } else {
+                // Standard carousel item behavior: always look at the camera
+                meshRef.current.lookAt(camera.position);
+            }
+        }
     });
 
     return (
@@ -147,7 +169,9 @@ const EquipmentCarousel: React.FC<{
             interactionState.isDragging = false; // Reset dragging state on new interaction start
             interactionState.downTime = performance.now();
             interactionState.downCoords = { x: e.clientX, y: e.clientY };
-            interactionState.lastRotation = group.current.rotation.y;
+            // For carousel, lastRotation is group rotation. For single item, it's its own rotation (not stored here).
+            // We just need to stop auto-rotate on interaction, the item will pick up its spin when auto-rotate resumes.
+            interactionState.lastRotation = group.current.rotation.y; 
             canvasElement.style.cursor = 'grabbing';
             console.log('startInteraction: State set to', { ...interactionState });
         };
@@ -164,7 +188,7 @@ const EquipmentCarousel: React.FC<{
                 console.log('moveInteraction: Detected as drag start. isDragging now:', interactionState.isDragging);
             }
 
-            if (interactionState.isDragging) {
+            if (interactionState.isDragging && itemsToDisplay.length > 1) { // Only drag-rotate the group if there's a carousel
                 const rotationAmount = deltaX * 0.005;
                 group.current.rotation.y = interactionState.lastRotation + rotationAmount;
                 invalidate();
@@ -266,18 +290,28 @@ const EquipmentCarousel: React.FC<{
             canvasElement.removeEventListener('pointerleave', resumeAutoRotate);
             if (interactionState.autoRotateTimeout) clearTimeout(interactionState.autoRotateTimeout);
         };
-    }, [gl, onItemClick, camera, raycaster, invalidate, appContext, autoRotateRef, interactionState]);
+    }, [gl, onItemClick, camera, raycaster, invalidate, appContext, autoRotateRef, interactionState, itemsToDisplay.length]); // Added itemsToDisplay.length dependency
     
     useFrame((state, delta) => {
+        // Only rotate the group if there's more than one item
         if (group.current && autoRotateRef.current && itemsToDisplay.length > 1) {
             group.current.rotation.y += ROTATION_SPEED * delta * 60;
         }
+        // If there's only one item, its rotation is handled internally by CarouselItem
     });
 
     return (
         <group ref={group}>
             {itemsToDisplay.map((item, index) => (
-                <CarouselItem key={item.id} displayItem={item} index={index} totalItems={itemsToDisplay.length} carouselRadius={carouselRadius} />
+                <CarouselItem
+                    key={item.id}
+                    displayItem={item}
+                    index={index}
+                    totalItems={itemsToDisplay.length}
+                    carouselRadius={carouselRadius}
+                    autoRotateRef={autoRotateRef} // Pass the ref
+                    isSingleItem={itemsToDisplay.length === 1} // Pass the flag
+                />
             ))}
         </group>
     );
@@ -564,7 +598,7 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
 
     const dynamicCarouselRadius = useMemo(() => {
         const numItems = carouselDisplayItems.length;
-        if (numItems <= 1) return 0;
+        if (numItems <= 1) return 0; // If one item or less, carousel radius is 0
         if (numItems === 2) return MIN_RADIUS_FOR_TWO_ITEMS;
         const circumference = numItems * (ITEM_WIDTH + (ITEM_WIDTH * (CARD_SPACING_FACTOR - 1)));
         return Math.max(MIN_RADIUS_FOR_TWO_ITEMS, circumference / (2 * Math.PI));
