@@ -1,6 +1,6 @@
 // src/app/page.tsx
-// MODIFIED BY GEMINI (v10): Updated DEFAULT_PLAYER_STATS_FOR_NEW_PLAYER.level to 0
-//                           to align with the new-user experience of starting at level 0.
+// MODIFIED BY LEXI (v12): Changed useMemo callback to explicitly return the array
+// of section components, to potentially resolve a "Expected ','" parsing error.
 
 "use client";
 
@@ -13,7 +13,7 @@ import { FingerprintScannerScreen } from '@/components/game/onboarding/Fingerpri
 import { ParallaxBackground } from '@/components/game/shared/ParallaxBackground';
 import { AgentSection } from '@/components/game/tod/AgentSection';
 import ControlCenterSection from '@/components/game/tod/ControlCenterSection';
-import { EquipmentLockerSection } from '@/components/game/tod/EquipmentLockerSection';
+import { EquipmentLockerSection } from '@/components/game/tod/EquipmentLockerSection'; // Correctly import EquipmentLockerSection
 import { VaultSection } from '@/components/game/tod/VaultSection';
 import { ScannerSection } from '@/components/game/tod/ScannerSection';
 import { TODWindow } from '@/components/game/shared/TODWindow';
@@ -123,15 +123,17 @@ export default function HomePage() {
     }
   }, [onboardingStep, isClientMounted, playerSpyName, faction, playerStats, addMessage, setIsLoading, isAppLoading, isTODWindowOpen, playBootAnimation]);
 
-  const sectionComponents = useMemo(() => [
-    <VaultSection key="vault-clone-start" parallaxOffset={parallaxOffset} />,
-    <AgentSection key="agent-actual" parallaxOffset={parallaxOffset} />,
-    <ControlCenterSection key="control-center-actual" parallaxOffset={parallaxOffset} />,
-    <ScannerSection key="scanner-actual" parallaxOffset={parallaxOffset} />,
-    <EquipmentLockerSection key="equipment-locker-actual" parallaxOffset={parallaxOffset} />,
-    <VaultSection key="vault-actual" parallaxOffset={parallaxOffset} />,
-    <AgentSection key="agent-clone-end" parallaxOffset={parallaxOffset} />,
-  ], [parallaxOffset]);
+  const sectionComponents = useMemo(() => {
+    return [ // Added explicit return
+      <VaultSection key="vault-clone-start" parallaxOffset={parallaxOffset} />,
+      <AgentSection key="agent-actual" parallaxOffset={parallaxOffset} />,
+      <ControlCenterSection key="control-center-actual" parallaxOffset={parallaxOffset} />,
+      <ScannerSection key="scanner-actual" parallaxOffset={parallaxOffset} />,
+      <EquipmentLockerSection key="equipment-locker-actual" parallaxOffset={parallaxOffset} />,
+      <VaultSection key="vault-actual" parallaxOffset={parallaxOffset} />,
+      <AgentSection key="agent-clone-end" parallaxOffset={parallaxOffset} />,
+    ];
+  }, [parallaxOffset]);
 
   const handleScroll = useCallback(() => {
     // Keep this logic for parallax and looping even when not actively scrolling
@@ -151,7 +153,7 @@ export default function HomePage() {
         todContainerRef.current.scrollLeft = totalContentWidthForLooping + currentScrollLeft;
       }
     }
-  }, [sectionComponents.length]); // Removed isScrollLockActive from dependencies
+  }, [sectionComponents.length]);
 
 
   useEffect(() => {
@@ -182,7 +184,7 @@ export default function HomePage() {
         }
       };
     }
-  }, [onboardingStep, isAppLoading, isClientMounted, playBootAnimation, handleScroll]); // Removed isScrollLockActive from dependencies
+  }, [onboardingStep, isAppLoading, isClientMounted, playBootAnimation, handleScroll]);
 
 
   // New useEffect to control overflow based on isScrollLockActive
@@ -195,7 +197,7 @@ export default function HomePage() {
               container.style.overflow = 'auto'; // Enable scrolling
           }
       }
-  }, [isScrollLockActive]); // Dependency on isScrollLockActive
+  }, [isScrollLockActive]);
 
   const renderOnboarding = () => {
     switch (onboardingStep) {

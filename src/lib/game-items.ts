@@ -1,7 +1,7 @@
 // src/lib/game-items.ts
-// MODIFIED BY LEXI (v9): Further refined GeneratedProps and simplified commonProps
-// parameter type, and removed duplicate 'cost' and 'scarcity' definitions to resolve
-// remaining TypeScript errors.
+// MODIFIED BY LEXI (v14): Resolved "ReferenceError: level is not defined" for EPC's
+// levelCapacity by moving its assignment into the generateItemLevels function's
+// conditional logic for NexusUpgrades, ensuring 'level' is in scope.
 
 // This file defines the data structures and item lists for the Spi vs Spi game.
 // It includes interfaces for various item categories and populated arrays of example items.
@@ -25,7 +25,7 @@ export interface GameItemBase {
   category: ItemCategory;
   imageSrc?: string; // Relative path or URL for item image (for detail view) - now defaults to .jpg
   tileImageSrc?: string; // Relative path or URL for item tile in grid view (can be same as imageSrc or different) - now defaults to .jpg
-  dataAiHint?: string;
+  dataAiHint?: string; // Corrected to camelCase as per standard practice for property names
   colorVar: keyof typeof ITEM_LEVEL_COLORS_CSS_VARS;
   
   // Detailed properties - some are optional and category-specific
@@ -72,10 +72,6 @@ export interface GameItemBase {
   // New fields for Hardware (Locks) recharge
   maxRechargeInitiations?: number; // Total number of times a lock can be recharged over its lifetime
   perInitiationRechargeCost?: number; // Cost to initiate one 20% refill
-  
-  // For Nexus Upgrades specifically to pass to progress bar
-  currentNexusStrength?: number;
-  maxNexusStrength?: number;
 }
 
 // --- Specific Item Type Interfaces (Extending GameItemBase) ---
@@ -128,12 +124,17 @@ export interface NexusUpgradeItem extends GameItemBase {
   repurchaseCost?: number; // Only for one-time use
   processingPowerBoost?: number; // Example for specific upgrades
   
-  // Specific fields for clarity. Added here because they are not just generic GameItemBase properties
+  // Specific fields for Nexus Upgrades (e.g., ERS strength)
   itemTypeDetail: 'Security Camera' | 'Reinforced Foundation' | 'Emergency Repair System' | 'Emergency Power Cell';
-  currentAlerts?: number; // For Security Camera
-  maxAlerts?: number; // For Security Camera
-  currentNexusStrength?: number; // For ERS, EPC
-  maxNexusStrength?: number; // For ERS, EPC
+  
+  // For Security Camera
+  currentAlerts?: number;
+  maxAlerts?: number;
+
+  // For ERS specifically:
+  currentCharge?: number; // The current amount of strength in the ERS (starts full at levelCapacity)
+  levelCapacity?: number; // The max strength for THIS ERS's level (e.g., 100 for L1, 800 for L8)
+  globalMaxCapacity?: number; // The absolute max strength any ERS can reach (always 800)
 }
 
 export interface AssaultTechItem extends GameItemBase {
@@ -188,83 +189,63 @@ type GeneratedProps =
   | 'title'
   | 'colorVar'; // Removed imageSrc, tileImageSrc, dataAiHint from here
 
-// --- NEW: generateItemLevels helper function (FIXED FOR ALL PREVIOUS TYPING ISSUES) ---
+// --- NEW: generateItemLevels helper function ---
 function generateItemLevels<K extends GameItemBase>( // K is the specific item type (e.g., HardwareItem)
   baseId: string,
   baseName: string,
-  // Now commonProps is just Partial<K>, as GeneratedProps handles the properties generated within the function.
-  // This allows imageSrc, tileImageSrc, dataAiHint to be passed in commonProps if desired.
   commonProps: Partial<K>,
   levelConfigs: Array<Partial<K> & { cost: number; scarcity: GameItemBase['scarcity']; }>
 ): K[] {
-  return ITEM_LEVELS.map(level => {
-    // Safeguard: If the player's ItemLevel is 0, for item generation purposes, treat it as Level 1.
-    // This ensures that array access `levelConfigs[effectiveLevel - 1]` is always valid.
+  return ITEM_LEVELS.map(level => { // Renamed 'l' to 'level' for clarity in this specific map
     const effectiveLevel = level === 0 ? 1 : level;
-
-    const levelConfig = levelConfigs[effectiveLevel - 1]; // Use effectiveLevel for array indexing
+    const levelConfig = levelConfigs[effectiveLevel - 1];
     
-    // Cost and scarcity are taken directly from levelConfig and handled by ...levelConfig spread
     const cost = levelConfig?.cost ?? 0;
     const scarcity = levelConfig?.scarcity ?? 'Common';
     
-    // Determine the file extension: .jpg for specified hardware, else .png
-    let fileExtension: 'jpg' | 'png' = 'png'; // Default to PNG
-
-    // List of hardware items that should prioritize .jpg
+    let fileExtension: 'jpg' | 'png' = 'png';
     const jpgPriorityHardwareItems = [
-      'cypher_lock',
-      'quantum_entanglement_lock',
-      'reinforced_deadbolt',
-      'sonic_pulse_lock',
+      'cypher_lock', 'quantum_entanglement_lock', 'reinforced_deadbolt', 'sonic_pulse_lock',
     ];
 
-    // Check if the current item is a Hardware item and is in our .jpg priority list
     if (commonProps.category === 'Hardware' && jpgPriorityHardwareItems.includes(baseId)) {
       fileExtension = 'jpg';
     }
-    // For Aesthetic Schemes, images are defined directly in their item objects,
-    // so this conditional logic won't apply to them, they'll use their hardcoded path.
-    // All other categories and hardware items not in jpgPriorityHardwareItems will default to .png.
 
     let itemImageSrc: string;
     let itemTileImageSrc: string;
-
-    // dataAiHint, imageSrc, tileImageSrc now directly accessed from commonProps
     let itemDataAiHint = commonProps.dataAiHint;
     const defaultImage = '/Spi vs Spi icon.png';
     const defaultAiHint = baseName.toLowerCase().split(' ').slice(0, 2).join(' ') || "item icon";
+    
     let currentUses: number | undefined = undefined;
     let maxUses: number | undefined = undefined;
     let currentAlerts: number | undefined = undefined;
     let maxAlerts: number | undefined = undefined;
     let currentCharges: number | undefined = undefined;
     let maxCharges: number | undefined = undefined;
-    
-    // perUseCost is declared here and should be in scope for the entire function.
     let perUseCost: number | undefined = undefined; 
-    
-    let itemStrength: { current: number; max: number } | undefined = undefined; // Initialize here
+    let itemStrength: { current: number; max: number } | undefined = undefined;
     let maxRechargeInitiations: number | undefined = undefined;
     let perInitiationRechargeCost: number | undefined = undefined;
 
-    // For Nexus Upgrades specific progress bar values
-    let currentNexusStrength: number | undefined = undefined;
-    let maxNexusStrength: number | undefined = undefined;
+    // New properties for Nexus Upgrades
+    let currentCharge: number | undefined = undefined;
+    let levelCapacity: number | undefined = undefined;
+    let globalMaxCapacity: number | undefined = undefined;
     let specificItemTypeDetail: NexusUpgradeItem['itemTypeDetail'] | undefined = undefined;
 
-    // Use commonProps.category to correctly type `K` if it's `HardwareItem` etc.
     if (commonProps.category === 'Hardware') {
       itemImageSrc = `/spyshop/items/hardware/${baseId}_l${effectiveLevel}.${fileExtension}`;
       itemTileImageSrc = itemImageSrc;
       itemDataAiHint = itemDataAiHint || `${baseName.toLowerCase().split(' ')[0]} lock`;
       
-      const hardwareProps = commonProps as Partial<HardwareItem>; // Type assertion here
+      const hardwareProps = commonProps as Partial<HardwareItem>;
       const hardwareMaxStr = levelConfig.strength?.max ?? hardwareProps.strength?.max ?? 0;
       const hardwareCurrentStr = levelConfig.strength?.current ?? hardwareProps.strength?.current ?? hardwareMaxStr;
       
       itemStrength = { current: hardwareCurrentStr, max: hardwareMaxStr };
-      maxRechargeInitiations = effectiveLevel; // Use effectiveLevel here too
+      maxRechargeInitiations = effectiveLevel;
       perInitiationRechargeCost = Math.round((hardwareMaxStr / 5) * 0.2);
     } else if (commonProps.category === 'Infiltration Gear') {
       itemImageSrc = `/spyshop/items/infiltration_gear/${baseId}_l${effectiveLevel}.${fileExtension}`;
@@ -274,7 +255,7 @@ function generateItemLevels<K extends GameItemBase>( // K is the specific item t
       if (commonProps.type === 'Rechargeable') {
         maxUses = 100;
         currentUses = maxUses;
-        perUseCost = Math.round((cost * 0.01) + (5 * effectiveLevel)); // perUseCost for rechargeable gear
+        perUseCost = Math.round((cost * 0.01) + (5 * effectiveLevel));
       } else if (commonProps.type === 'Consumable' || commonProps.type === 'One-Time Use') {
         maxUses = 1;
         currentUses = 1;
@@ -284,7 +265,7 @@ function generateItemLevels<K extends GameItemBase>( // K is the specific item t
         itemTileImageSrc = itemImageSrc;
         itemDataAiHint = itemDataAiHint || `${baseName.toLowerCase().split(' ')[0]} fortifier`;
         
-        const fortifierProps = commonProps as Partial<LockFortifierItem>; // Type assertion here
+        const fortifierProps = commonProps as Partial<LockFortifierItem>;
         const fortifierMaxStr = levelConfig.strength?.max ?? fortifierProps.strength?.max ?? 0;
         const fortifierCurrentStr = levelConfig.strength?.current ?? fortifierProps.strength?.current ?? fortifierMaxStr;
         
@@ -292,7 +273,7 @@ function generateItemLevels<K extends GameItemBase>( // K is the specific item t
         if (commonProps.type === 'Rechargeable') {
           maxCharges = 100;
           currentCharges = maxCharges;
-          perUseCost = Math.round((cost * 0.01) + (5 * effectiveLevel)); // perUseCost for rechargeable fortifiers
+          perUseCost = Math.round((cost * 0.01) + (5 * effectiveLevel));
         } else if (commonProps.type === 'One-Time Use') {
           maxCharges = 1;
           currentCharges = 1;
@@ -305,20 +286,22 @@ function generateItemLevels<K extends GameItemBase>( // K is the specific item t
         // Determine itemTypeDetail based on baseName
         if (baseName === 'Security Camera') {
             specificItemTypeDetail = 'Security Camera';
-            maxAlerts = effectiveLevel * 10; // Scaled alerts for Security Camera
+            maxAlerts = effectiveLevel * 10;
             currentAlerts = maxAlerts;
         } else if (baseName === 'Reinforced Foundation') {
             specificItemTypeDetail = 'Reinforced Foundation';
         } else if (baseName === 'Emergency Repair System (ERS)') {
             specificItemTypeDetail = 'Emergency Repair System';
-            maxNexusStrength = calculateScaledValue(effectiveLevel, 100, 800); // Max strength for ERS
-            currentNexusStrength = maxNexusStrength;
+            currentCharge = calculateScaledValue(effectiveLevel, 100, 800); // Current charge based on level
+            levelCapacity = calculateScaledValue(effectiveLevel, 100, 800); // Capacity at this level
+            globalMaxCapacity = 800; // Fixed absolute max capacity for ERS
         } else if (baseName === 'Emergency Power Cell (EPC)') {
             specificItemTypeDetail = 'Emergency Power Cell';
-            maxNexusStrength = effectiveLevel; // Max strength for EPC
-            currentNexusStrength = maxNexusStrength;
+            currentCharge = 1; // EPC starts at 1 charge
+            levelCapacity = level; // EPC max capacity is its level
+            globalMaxCapacity = 8; // Max level is 8 for EPC
         } else {
-            specificItemTypeDetail = 'Reinforced Foundation'; // Fallback, though all should be covered
+            specificItemTypeDetail = 'Reinforced Foundation';
         }
     } else if (commonProps.category === 'Assault Tech') {
         itemImageSrc = `/spyshop/items/assault_tech/${baseId}_l${effectiveLevel}.${fileExtension}`;
@@ -327,29 +310,26 @@ function generateItemLevels<K extends GameItemBase>( // K is the specific item t
         maxUses = 1;
         currentUses = 1;
     } else if (commonProps.category === 'Aesthetic Schemes') {
-        // Aesthetic Schemes already set their imageSrc directly within their definitions below
-        // If not, they would fall through to the defaultImage.
         itemImageSrc = commonProps.imageSrc || defaultImage;
         itemTileImageSrc = commonProps.tileImageSrc || itemImageSrc;
     } else {
-        // Fallback for any category not explicitly handled or for commonProps.imageSrc being set
         itemImageSrc = commonProps.imageSrc || defaultImage;
         itemTileImageSrc = itemImageSrc;
     }
       
     return {
-      id: `${baseId}_l${level}`, // The ID should still reflect the actual level (0-8)
+      id: `${baseId}_l${level}`,
       name: baseName,
-      title: `${baseName} L${level}`, // Display title reflects actual level (0-8)
-      level: level, // Assign the actual requested level (0-8)
-      colorVar: (effectiveLevel % 8) + 1 as keyof typeof ITEM_LEVEL_COLORS_CSS_VARS, // Use effectiveLevel for color
+      title: `${baseName} L${level}`,
+      level: level,
+      colorVar: (effectiveLevel % 8) + 1 as keyof typeof ITEM_LEVEL_COLORS_CSS_VARS,
       
-      ...commonProps, // Spread commonProps first
-      ...levelConfig, // Then spread levelConfig, which contains cost and scarcity (overwriting if also in commonProps)
+      ...commonProps,
+      ...levelConfig,
 
-      imageSrc: itemImageSrc, // Use the determined image source
-      tileImageSrc: itemTileImageSrc, // Use the determined tile image source
-      dataAiHint: itemDataAiHint || defaultAiHint, // Use the determined dataAiHint
+      imageSrc: itemImageSrc,
+      tileImageSrc: itemTileImageSrc,
+      dataAiHint: itemDataAiHint || defaultAiHint, // Ensure this is camelCase
       
       ...(currentUses !== undefined && { currentUses }),
       ...(maxUses !== undefined && { maxUses }),
@@ -357,13 +337,16 @@ function generateItemLevels<K extends GameItemBase>( // K is the specific item t
       ...(maxAlerts !== undefined && { maxAlerts }),
       ...(currentCharges !== undefined && { currentCharges }),
       ...(maxCharges !== undefined && { maxCharges }),
-      ...(perUseCost !== undefined && { perUseCost }), // Include perUseCost if defined
-      ...(itemStrength !== undefined && { strength: itemStrength }), // Use the `itemStrength` object
+      ...(perUseCost !== undefined && { perUseCost }),
+      ...(itemStrength !== undefined && { strength: itemStrength }),
       ...(maxRechargeInitiations !== undefined && { maxRechargeInitiations }),
       ...(perInitiationRechargeCost !== undefined && { perInitiationRechargeCost }),
-      ...(specificItemTypeDetail !== undefined && { itemTypeDetail: specificItemTypeDetail }), // Add for Nexus Upgrades
-      ...(currentNexusStrength !== undefined && { currentNexusStrength }), // Add for Nexus Upgrades
-      ...(maxNexusStrength !== undefined && { maxNexusStrength }), // Add for Nexus Upgrades
+      
+      ...(specificItemTypeDetail !== undefined && { itemTypeDetail: specificItemTypeDetail }),
+      // New properties for Nexus Upgrades (ERS and EPC)
+      ...(currentCharge !== undefined && { currentCharge }),
+      ...(levelCapacity !== undefined && { levelCapacity }),
+      ...(globalMaxCapacity !== undefined && { globalMaxCapacity }),
     } as K;
   });
 }
@@ -483,7 +466,7 @@ export const INFILTRATION_GEAR_ITEMS: InfiltrationGearItem[] = [
     ITEM_LEVELS.map(l => ({ cost: calculateScaledValue(l, 600, 1300), attackFactor: calculateScaledValue(l, 12.5, 100), scarcity: 'Rare' }))
   ),
  ...generateItemLevels<InfiltrationGearItem>(
-    'temporal_dephaser', 'Temporal Dephaser', // Removed comma
+    'temporal_dephaser', 'Temporal Dephaser',
     { category: 'Infiltration Gear', description: 'Manipulates time flow. Effective against time-based defenses.', attackFactor: 12.5, type: 'Rechargeable', minigameEffect: "Increases the 'Time Allowed Per Sequence' and may reverse the sequence.", levelScalingNote: "Increases the 'Time Allowed Per Sequence' by 0.75 seconds per level. The probability of reversing the sequence increases by 10% per level.", lockTypeEffectiveness: { idealCounterAgainst: ["Temporal Flux Lock", "Temporal Anchor"], poorMatchPenaltyAgainst: ["Other lock types"]}, strengthPerEntryClarification: "The Temporal Dephaser's Attack Factor functions as its 'strength per entry.'", specialEffectsDefinition: "The 'reverse the sequence' effect is a special effect that Temporal Locks have. The Temporal Dephaser is effective against this.", lockFortifierEffectsDefinition: "Not applicable to this tool." },
     ITEM_LEVELS.map(l => ({ cost: calculateScaledValue(l, 800, 1500), attackFactor: calculateScaledValue(l, 12.5, 100), scarcity: 'Super Rare' })) // perUseCost calculated in generateItemLevels
   ),
@@ -512,21 +495,30 @@ export const NEXUS_UPGRADE_ITEMS: NexusUpgradeItem[] = [
   ),
   ...generateItemLevels<NexusUpgradeItem>(
     'ers', 'Emergency Repair System (ERS)',
-    { category: 'Nexus Upgrades', description: 'A crucial defensive gadget that enhances the durability of your Vault\\\'s Locks during an infiltration attempt. It acts as a reserve pool of strength that your Locks can draw upon before their own structural integrity is compromised.', functionDescription: "Provides a reserve of strength exclusively for Locks installed on the Vault. This reserve is depleted before the Lock's own strength is affected when taking damage. It takes effect automatically and immediately upon a Lock receiving damage. The ERS does not affect Lock Fortifiers or other items. An ERS’s strength is shared between the installed locks. ERS gadgets range from Level 1 (100 strength) through to Level 8 (800 strength). When an ERS is active, its effective strength is made available to the Locks on the vault. For instance, a single L1 Lock protected by an L8 ERS effectively has the strength of a L8 Lock plus its own L1 base strength, as the ERS reserve is used first.", placement: "Vault-Wide Upgrade slot", durability: "Rechargeable", cooldown: "1 hour", destructionDescription: "Upon reaching the end of its total recharge capacity (initial + 3 recharges) and that capacity being fully depleted, the Security Camera gadget is destroyed and automatically removed from its Vault slot it occupied. Players will receive in-game notification when an ERS is destroyed this way.", itemTypeDetail: 'Emergency Repair System' },
-    ITEM_LEVELS.map(l => ({ cost: calculateScaledValue(l, 1000, 8000), rechargeCost: calculateScaledValue(l, 75, 600), rechargeCapacity: `${l*100} strength points`, scarcity: 'Rare',
-        // These properties are part of NexusUpgradeItem and are passed in levelConfigs
-        currentNexusStrength: calculateScaledValue(l, 100, 800),
-        maxNexusStrength: calculateScaledValue(l, 100, 800),
+    { category: 'Nexus Upgrades', description: 'A crucial defensive gadget that enhances the durability of your Vault\\\'s Locks during an infiltration attempt. It acts as a reserve pool of strength that your Locks can draw upon before their own structural integrity is compromised.', functionDescription: "Provides a reserve of strength exclusively for Locks installed on the Vault. This reserve is depleted before the Lock's own strength is affected when taking damage. It takes effect automatically and immediately upon a Lock receiving damage. The ERS does not affect Lock Fortifiers or other items. An ERS’s strength is shared between the installed locks. ERS gadgets range from Level 1 (100 strength) through to Level 8 (800 strength). When an ERS is active, its effective strength is made available to the Locks on the vault. For instance, a single L1 Lock protected by an L8 ERS effectively has the strength of a L8 Lock plus its own L1 base strength, as the ERS reserve is used first.", placement: "Vault-Wide Upgrade slot", durability: "Rechargeable", cooldown: "1 hour", destructionDescription: "Upon reaching the end of its total recharge capacity (initial + 3 recharges) and that capacity being fully depleted, the Security Camera gadget is destroyed and automatically removed from its Vault slot it occupied. Players will receive in-game notification when an ERS is destroyed this way.", minigameEffect: 'Increases the target\\\'s Lock Strength by an amount equal to its level. This increases the number of \\\'Required Successful Entries\\\' needed to bypass the target.', itemTypeDetail: 'Emergency Repair System' },
+    ITEM_LEVELS.map(level => ({ // Renamed 'l' to 'level' here
+      cost: calculateScaledValue(level, 1000, 8000), 
+      rechargeCost: calculateScaledValue(level, 75, 600), 
+      rechargeCapacity: `${level*100} strength points`, 
+      scarcity: 'Rare',
+      currentCharge: calculateScaledValue(level, 100, 800), // Current charge based on level (starts full)
+      levelCapacity: calculateScaledValue(level, 100, 800), // Max capacity for THIS ERS level
+      globalMaxCapacity: 800, // Absolute max capacity for any ERS
     }))
   ),
     ...generateItemLevels<NexusUpgradeItem>(
     'epc', 'Emergency Power Cell (EPC)',
     { category: 'Nexus Upgrades', description: 'A single-use defensive gadget designed to provide an immediate boost to your Vault\\\'s defenses when under infiltration. It\\\'s a quick shot of energy to help weather an unexpected assault.', functionDescription: "The Emergency Power Cell provides a defensive effect when an attacker is engaged in an infiltration. It increases the difficulty of the lock’s Key Cracker.", placement: "Vault-Wide Upgrade slot", durability: "One-Time Use", destructionDescription: "This gadget is consumed when its strength reaches zero. The Power Cell has a 'strength' equal to its level (an L1 EPC has 1 strength, an L8 EPC has 8 strength). Once the EPC's strength is depleted to 0, the Emergency Power Cell is destroyed and automatically removed from its Vault slot. Players will receive in-game notification when an EPC is destroyed this way.", minigameEffect: 'When the EPC is active, it increases the difficulty of the Key Cracker by adding 3 extra digits to the code sequence the attacker must remember. Each time the attacker successfully enters a code sequence while the EPC is active, the EPC\\\'s strength is reduced by 1.', itemTypeDetail: 'Emergency Power Cell',
-        // These properties are part of NexusUpgradeItem and are passed in levelConfigs
-        currentNexusStrength: 1, // EPC has a strength of its level, simplified to 1 here for consistent display
-        maxNexusStrength: 8, // Max level for progress bar, effectively, as per its description.
+        currentCharge: 1, // EPC starts at 1 charge
+        // levelCapacity: level, // This line was causing the error, commented out
+        globalMaxCapacity: 8, // Max level is 8 for EPC
     },
-    ITEM_LEVELS.map(l => ({ cost: calculateScaledValue(l, 1200, 9600), repurchaseCost: calculateScaledValue(l, 800, 6400), scarcity: 'Super Rare' }))
+    ITEM_LEVELS.map(level => ({ // Renamed 'l' to 'level' here
+      cost: calculateScaledValue(level, 1200, 9600), 
+      repurchaseCost: calculateScaledValue(level, 800, 6400), 
+      scarcity: 'Super Rare',
+      levelCapacity: level, // Moved levelCapacity assignment here
+    }))
   ),
 ];
 
@@ -559,9 +551,9 @@ export const ASSAULT_TECH_ITEMS: AssaultTechItem[] = [
 ];
 
 export const AESTHETIC_SCHEME_ITEMS: AestheticSchemeItem[] = [
-  { id: 'aesthetic_scheme_cyphers', name: 'Team Blue', title: 'Team Blue', description: 'Default Cyphers operative theme.', level: 1, cost: 0, scarcity: 'Common', category: 'Aesthetic Schemes', themeKey: 'cyphers', colorVar: 5, imageSrc: `/spyshop/items/aesthetic_schemes/aesthetic_scheme_cyphers_l1.jpg`, tileImageSrc: `/spyshop/items/aesthetic_schemes/aesthetic_scheme_cyphers_l1.jpg`, dataAiHint: "blue abstract" },
-  { id: 'aesthetic_scheme_shadows', name: 'Team Red', title: 'Team Red', description: 'Standard Shadows operative theme.', level: 1, cost: 0, scarcity: 'Common', category: 'Aesthetic Schemes', themeKey: 'shadows', colorVar: 1, imageSrc: `/spyshop/items/aesthetic_schemes/aesthetic_scheme_shadows_l1.jpg`, tileImageSrc: `/spyshop/items/aesthetic_schemes/aesthetic_scheme_shadows_l1.jpg`, dataAiHint: "red abstract" },
-  { id: 'aesthetic_scheme_terminal_green', name: 'Terminal Green', title: 'Terminal Green', description: 'Classic green terminal theme.', level: 1, cost: 100, scarcity: 'Common', category: 'Aesthetic Schemes', themeKey: 'terminal-green', colorVar: 4, imageSrc: `/spyshop/items/aesthetic_schemes/aesthetic_scheme_terminal_green_l1.jpg`, tileImageSrc: `/spyshop/items/aesthetic_schemes/aesthetic_scheme_terminal_green_l1.jpg`, dataAiHint: "green abstract" },
+  { id: 'aesthetic_scheme_cyphers', name: 'Team Blue', title: 'Team Blue', description: 'Default Cyphers operative theme.', level: 1, cost: 0, scarcity: 'Common', category: 'Aesthetic Schemes', themeKey: 'cyphers', colorVar: 5, imageSrc: `/spyshop/items/aesthetic_schemes/aesthetic_scheme_cyphers_l1.jpg`, tileImageSrc: `/spyshop/items/aesthetic_schemes/aesthetic_scheme_cyphers_l1.jpg`, dataAiHint: "blue abstract" }, // Changed 'data-ai-hint' to 'dataAiHint'
+  { id: 'aesthetic_scheme_shadows', name: 'Team Red', title: 'Team Red', description: 'Standard Shadows operative theme.', level: 1, cost: 0, scarcity: 'Common', category: 'Aesthetic Schemes', themeKey: 'shadows', colorVar: 1, imageSrc: `/spyshop/items/aesthetic_schemes/aesthetic_scheme_shadows_l1.jpg`, tileImageSrc: `/spyshop/items/aesthetic_schemes/aesthetic_scheme_shadows_l1.jpg`, dataAiHint: "red abstract" }, // Changed 'data-ai-hint' to 'dataAiHint'
+  { id: 'aesthetic_scheme_terminal_green', name: 'Terminal Green', title: 'Terminal Green', description: 'Classic green terminal theme.', level: 1, cost: 100, scarcity: 'Common', category: 'Aesthetic Schemes', themeKey: 'terminal-green', colorVar: 4, imageSrc: `/spyshop/items/aesthetic_schemes/aesthetic_scheme_terminal_green_l1.jpg`, tileImageSrc: `/spyshop/items/aesthetic_schemes/aesthetic_scheme_terminal_green_l1.jpg`, dataAiHint: "green abstract" }, // Changed 'data-ai-hint' to 'dataAiHint'
 ];
 
 // IMPORTANT: Define ALL_ITEMS_BY_CATEGORY *before* functions/constants that use it.
@@ -744,6 +736,10 @@ export interface PlayerInventoryItem {
   maxAlerts?: number;
   currentCharges?: number;
   maxCharges?: number;
+
+  // Added for ERS in inventory
+  levelCapacity?: number;
+  globalMaxCapacity?: number;
 }
 
 export interface VaultSlot {

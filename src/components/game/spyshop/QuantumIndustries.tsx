@@ -1,4 +1,8 @@
 // src/components/game/spyshop/QuantumIndustries.tsx
+// MODIFIED BY LEXI (v5): Resolved TypeScript errors for 'currentCharge', 'globalMaxCapacity',
+// and 'levelCapacity' by using type assertions for NexusUpgradeItem within the
+// ProgressBar rendering logic, ensuring correct type inference.
+
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
@@ -6,7 +10,7 @@ import NextImage from 'next/image';
 import { X, ArrowLeft, ShoppingCart, Search } from 'lucide-react';
 import { useAppContext } from '@/contexts/AppContext';
 import { AnimatePresence, motion } from 'framer-motion';
-import { SHOP_CATEGORIES, ITEM_LEVELS, type ProductCategory, type ItemTile, type SpecificItemData, type ItemLevel } from '@/lib/game-items';
+import { SHOP_CATEGORIES, ITEM_LEVELS, type ProductCategory, type ItemTile, type SpecificItemData, type ItemLevel, type NexusUpgradeItem } from '@/lib/game-items'; // Import NexusUpgradeItem
 import { cn } from '@/lib/utils';
 
 interface NewStickyHeaderProps {
@@ -45,17 +49,19 @@ interface SpecificItemDetailViewProps {
 }
 
 const ProgressBar: React.FC<{ label: string; value: number; max?: number; colorClass?: string }> = ({ label, value, max, colorClass = "bg-green-500" }) => {
+  // The default max values are fallback if 'max' prop is not provided.
+  // For ERS, 'max' will be explicitly provided as globalMaxCapacity.
   const displayMax = max ?? (label === 'Strength' ? 800 : label === 'Resistance' ? 80 : 100);
   return (
     <>
- <div className="flex justify-between text-xs text-slate-400 mb-0.5">
- <span>{label}</span>
- <span>{value} / {displayMax}</span>
- </div>
- <div className="w-full bg-slate-700 rounded-full h-2.5 overflow-hidden">
- <div className={`${colorClass} h-2.5 rounded-full transition-all duration-500`} style={{ width: `${(value / displayMax) * 100}%` }}></div>
- </div>
- </>
+      <div className="flex justify-between text-xs text-slate-400 mb-0.5">
+        <span>{label}</span>
+        <span>{value} / {displayMax}</span>
+      </div>
+      <div className="w-full bg-slate-700 rounded-full h-2.5 overflow-hidden">
+        <div className={`${colorClass} h-2.5 rounded-full transition-all duration-500`} style={{ width: `${(value / displayMax) * 100}%` }}></div>
+      </div>
+    </>
   )
 };
 
@@ -259,9 +265,9 @@ export function QuantumIndustries() {
               onPurchase={handlePurchase}
               selectedLevel={selectedLevel}
               onSelectLevel={handleSelectLevel}
- maxStrength={maxStrength}
- maxResistance={maxResistance}
- maxAttackFactor={maxAttackFactor}
+              maxStrength={maxStrength}
+              maxResistance={maxResistance}
+              maxAttackFactor={maxAttackFactor}
               playerLevel={playerInfo?.stats.level as ItemLevel || ITEM_LEVELS[0]}
               levelsAvailableForItem={levelsAvailableForItem}
             />
@@ -534,13 +540,6 @@ const ItemDisplayGrid: React.FC<ItemDisplayGridProps> = ({ items, onSelectItem }
   if (!items || items.length === 0) {
     return <p className="text-center text-slate-400 mt-10">No items in this category yet, or clear your selection below.</p>;
   }
-
-  const getTileImageSrc = (item: ItemTile) => {
- if (item.category === 'Hardware') {
-      return `/spyshop/tiles/hardware/${item.name.toLowerCase().replace(/ /g, '_')}.jpg`;
- }
-    return '/Spi vs Spi placeholder.png';
-  };
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
       {items.map((item) => (
@@ -552,8 +551,8 @@ const ItemDisplayGrid: React.FC<ItemDisplayGridProps> = ({ items, onSelectItem }
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2, delay: Math.random() * 0.1 }}
-        > {/* Removed padding around image */}
-          <div className="w-full h-2/3 relative"> {/* Removed mb-2 */}
+        >
+          <div className="w-full h-2/3 relative mb-2">
             <NextImage src={item.tileImageSrc || '/spyshop/tiles/placeholder.png'} alt={item.name || 'Item image'} fill sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw" className="rounded-sm" data-ai-hint="item icon"/>
           </div>
           <span className="text-xs sm:text-sm font-rajdhani font-semibold text-cyan-200 leading-tight">{item.name}</span>
@@ -568,6 +567,11 @@ const SpecificItemDetailView: React.FC<SpecificItemDetailViewProps & { maxStreng
   itemData, onBack, onPurchase, selectedLevel, onSelectLevel, playerLevel, levelsAvailableForItem, maxStrength, maxResistance, maxAttackFactor
 }) => {
   if (!itemData) return <p className="text-center text-slate-400 p-8">Item details not found.</p>;
+
+  // Use type assertion to tell TypeScript that if itemTypeDetail matches,
+  // then itemData has the properties of NexusUpgradeItem.
+  const isERS = itemData.itemTypeDetail === 'Emergency Repair System';
+  const isEPC = itemData.itemTypeDetail === 'Emergency Power Cell';
 
   return (
     <div className="h-full flex flex-col relative"> 
@@ -589,41 +593,46 @@ const SpecificItemDetailView: React.FC<SpecificItemDetailViewProps & { maxStreng
             </motion.div>
 
             <div className="text-center w-full max-w-xs md:max-w-sm">
- <p className="text-3xl font-semibold text-orange-400 mb-1">{itemData.cost} <span className="text-xl text-slate-400">ELINT</span></p>
+              <p className="text-3xl font-semibold text-orange-400 mb-1">{itemData.cost} <span className="text-xl text-slate-400">ELINT</span></p>
               <button
                 onClick={() => onPurchase(itemData.id)}
                 className="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold py-2.5 px-4 rounded-md transition-colors duration-200 flex items-center justify-center text-lg shadow-md hover:shadow-lg"
               >
                 <ShoppingCart className="w-5 h-5 mr-2" /> Purchase
               </button>
- <p className="text-xs text-slate-500 mt-1 text-left">Scarcity: <span className="font-medium text-slate-400">{itemData.scarcity}</span></p>
+              <p className="text-xs text-slate-500 mt-1 text-left">Scarcity: <span className="font-medium text-slate-400">{itemData.scarcity}</span></p>
             </div>
           </div>
 
           <div className="md:pt-2">
- {/* Progress Bars moved below scarcity text */}
-            <div className="w-full max-w-xs md:max-w-sm space-y-3 mt-4"> {/* Added margin-top to separate from purchase section */}
+            {/* Progress Bars */}
+            <div className="bg-slate-800/60 border border-slate-700/80 rounded-lg p-4 mb-6 shadow-lg space-y-3">
+              <h3 className="text-xl font-orbitron text-sky-300 mb-2">Details</h3>
               {/* Hardware (Strength and Resistance) */}
               {itemData.category === 'Hardware' && itemData.strength && (
- <ProgressBar label="Strength" value={itemData.strength.current} max={maxStrength} colorClass="bg-red-500"/>
+                <ProgressBar label="Strength" value={itemData.strength.current} max={maxStrength} colorClass="bg-red-500" />
               )}
               {itemData.category === 'Hardware' && itemData.resistance && (
- <ProgressBar label="Resistance" value={itemData.resistance.current} max={maxResistance} colorClass="bg-blue-500"/>
+                <ProgressBar label="Resistance" value={itemData.resistance.current} max={maxResistance} colorClass="bg-blue-500" />
               )}
               {/* Lock Fortifiers (Resistance only) */}
               {itemData.category === 'Lock Fortifiers' && itemData.resistance && (
- <ProgressBar label="Resistance" value={itemData.resistance.current} max={maxResistance} colorClass="bg-blue-500"/>
+                <ProgressBar label="Resistance" value={itemData.resistance.current} max={maxResistance} colorClass="bg-blue-500" />
               )}
               {/* Nexus Upgrades */}
               {itemData.category === 'Nexus Upgrades' && itemData.itemTypeDetail === 'Security Camera' && itemData.level !== undefined && (
- <ProgressBar label="Alerts" value={itemData.level} max={8} colorClass="bg-orange-500"/>
+                <ProgressBar label="Alerts" value={itemData.level} max={8} colorClass="bg-orange-500" />
               )}
               {itemData.category === 'Nexus Upgrades' && itemData.itemTypeDetail === 'Reinforced Foundation' && itemData.level !== undefined && (
- <ProgressBar label="Difficulty Increase" value={itemData.level} max={8} colorClass="bg-green-500"/>
+                <ProgressBar label="Difficulty Increase" value={itemData.level} max={8} colorClass="bg-green-500" />
               )}
-              {itemData.category === 'Nexus Upgrades' && itemData.itemTypeDetail === 'Emergency Repair System' && itemData.strength?.current !== undefined && <ProgressBar label="Vault Strength" value={itemData.strength.current} max={maxStrength} colorClass="bg-red-500"/>}
-              {itemData.category === 'Nexus Upgrades' && itemData.itemTypeDetail === 'Emergency Power Cell' && itemData.level !== undefined && (
- <ProgressBar label="Difficulty Increase" value={itemData.level} max={8} colorClass="bg-green-500" />
+              {/* Corrected: Emergency Repair System (ERS) uses currentCharge and globalMaxCapacity */}
+              {itemData.category === 'Nexus Upgrades' && isERS && (
+                <ProgressBar label="Vault Strength" value={(itemData as NexusUpgradeItem).currentCharge!} max={(itemData as NexusUpgradeItem).globalMaxCapacity!} colorClass="bg-sky-500" />
+              )}
+              {/* Emergency Power Cell (EPC) uses currentCharge and levelCapacity for its own scaling */}
+              {itemData.category === 'Nexus Upgrades' && isEPC && (
+                <ProgressBar label="Difficulty Increase" value={(itemData as NexusUpgradeItem).currentCharge!} max={(itemData as NexusUpgradeItem).levelCapacity!} colorClass="bg-green-500" />
               )}
               {/* Infiltration Gear (Attack Factor) */}
               {itemData.category === 'Infiltration Gear' && itemData.attackFactor !== undefined && <ProgressBar label="Attack Factor" value={itemData.attackFactor} max={maxAttackFactor || 100} colorClass="bg-yellow-500" />}
