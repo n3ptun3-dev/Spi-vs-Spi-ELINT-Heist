@@ -528,7 +528,7 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
     
     useEffect(() => {
         const items = generateInitialView();
-        console.log('useEffect (generateInitialView): Setting initial carousel display items:', items.map(i => i.id));
+        // console.log('useEffect (generateInitialView): Setting initial carousel display items:', items.map(i => i.id));
         setCarouselDisplayItems(items);
         setInitialItems(items);
     }, [generateInitialView]);

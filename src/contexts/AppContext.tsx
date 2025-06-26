@@ -675,16 +675,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deployItemToVault,
     isSpyShopActive: _isSpyShopActive, // Keeping for other potential uses
     setIsSpyShopActive: (isActive: boolean) => {
-        console.log(`AppContext: setIsSpyShopActive called with ${isActive}`);
+        // console.log(`AppContext: setIsSpyShopActive called with ${isActive}`);
         _setIsSpyShopActive(isActive);
     },
     isSpyShopOpen: _isSpyShopOpen, // Primary state for shop visibility
     openSpyShop: () => {
-        console.log("AppContext: openSpyShop called. Setting isSpyShopOpen to TRUE.");
+        // console.log("AppContext: openSpyShop called. Setting isSpyShopOpen to TRUE.");
         _setIsSpyShopOpen(true);
     },
     closeSpyShop: () => {
-        console.log("AppContext: closeSpyShop called. Setting isSpyShopOpen to FALSE.");
+        // console.log("AppContext: closeSpyShop called. Setting isSpyShopOpen to FALSE.");
         _setIsSpyShopOpen(false);
     },
     shopSearchTerm: _shopSearchTerm,

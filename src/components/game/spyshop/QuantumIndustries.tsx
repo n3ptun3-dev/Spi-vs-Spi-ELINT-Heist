@@ -1,4 +1,3 @@
-
 // src/components/game/spyshop/QuantumIndustries.tsx
 "use client";
 
@@ -331,10 +330,8 @@ export function QuantumIndustries() {
                 backgroundPosition: 'center',
               }}
             />
-            <div className="absolute inset-0 pointer-events-none z-[3] overflow-hidden">
-                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-700/5 rounded-full blur-3xl animate-float-one opacity-30"></div>
-                <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-700/5 rounded-full blur-3xl animate-float-two opacity-30"></div>
-            </div>
+            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-700/5 rounded-full blur-3xl animate-float-one opacity-30"></div>
+            <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-700/5 rounded-full blur-3xl animate-float-two opacity-30"></div>
           </>
         )}
 
@@ -387,8 +384,9 @@ const NewStickyHeader: React.FC<NewStickyHeaderProps> = ({ activePage, setActive
     <div className={cn("sticky top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out bg-slate-900/80 backdrop-blur-md border-b border-cyan-700/50 shadow-lg md:rounded-t-lg")}>
       {isSmallHeader ? (
         <div className="flex justify-between items-center w-full max-w-6xl mx-auto px-4 py-2">
+          {/* Small header logo: Removed layout/objectFit, added fill and sizes */}
           <div className="relative w-10 h-10 sm:w-12 sm:h-12"> 
-            <NextImage src="/spyshop/Quantum Industries Icon.png" alt="QI Icon" layout="fill" objectFit="contain" data-ai-hint="logo quantum small"/>
+            <NextImage src="/spyshop/Quantum Industries Icon.png" alt="QI Icon" fill sizes="64px" data-ai-hint="logo quantum small"/>
           </div>
           <div className="flex items-center space-x-2 sm:space-x-4">
             <button
@@ -415,8 +413,9 @@ const NewStickyHeader: React.FC<NewStickyHeaderProps> = ({ activePage, setActive
       ) : (
         <div className="flex flex-col items-center w-full max-w-6xl mx-auto px-6">
            <div className="flex justify-between items-center w-full"> 
+            {/* Full header logo: Removed layout/objectFit, added fill and sizes */}
             <div className="relative w-full h-16 md:h-20 my-2 flex-grow"> 
-              <NextImage src="/spyshop/Quantum Industries Icon Logo.png" alt="Quantum Industries Full Logo" layout="fill" objectFit="contain" data-ai-hint="logo quantum full"/>
+              <NextImage src="/spyshop/Quantum Industries Icon Logo.png" alt="Quantum Industries Full Logo" fill sizes="(max-width: 768px) 100vw, 50vw" data-ai-hint="logo quantum full"/>
             </div>
           </div>
           <div className="flex justify-center items-center space-x-4 w-full pb-2"> 
@@ -458,8 +457,9 @@ const ProductNav: React.FC<ProductNavProps> = ({ selectedCategory, onSelectCateg
             className={`flex flex-col items-center p-2 rounded-md transition-all duration-200 w-24 h-[70px] justify-center flex-shrink-0
                         ${selectedCategory?.id === cat.id ? 'bg-cyan-600/40 scale-105 ring-1 ring-cyan-400' : 'hover:bg-slate-700/50'}`}
           >
+            {/* Category icons: Removed layout/objectFit, added fill and sizes */}
             <div className="relative w-6 h-6 mb-0.5">
-              <NextImage src={cat.iconImageSrc} alt={cat.name} layout="fill" objectFit="contain" className="opacity-80 group-hover:opacity-100" data-ai-hint="icon category"/>
+              <NextImage src={cat.iconImageSrc} alt={cat.name} fill sizes="33vw" className="opacity-80 group-hover:opacity-100" data-ai-hint="icon category"/>
             </div>
             <span className={`text-[10px] leading-tight text-center ${selectedCategory?.id === cat.id ? 'text-cyan-300 font-semibold' : 'text-slate-300'}`}>
               {cat.name}
@@ -524,8 +524,9 @@ const ItemDisplayGrid: React.FC<ItemDisplayGridProps> = ({ items, onSelectItem }
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2, delay: Math.random() * 0.1 }}
         >
+          {/* Item tile image: Removed layout/objectFit, added fill and responsive sizes */}
           <div className="w-full h-2/3 relative mb-2">
-            <NextImage src={item.tileImageSrc || '/spyshop/tiles/placeholder.png'} alt={item.name} layout="fill" objectFit="contain" className="rounded-sm" data-ai-hint="item icon"/>
+            <NextImage src={item.tileImageSrc || '/spyshop/tiles/placeholder.png'} alt={item.name} fill sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw" className="rounded-sm" data-ai-hint="item icon"/>
           </div>
           <span className="text-xs sm:text-sm font-rajdhani font-semibold text-cyan-200 leading-tight">{item.name}</span>
         </motion.button>
@@ -557,7 +558,8 @@ const SpecificItemDetailView: React.FC<SpecificItemDetailViewProps> = ({
             <motion.div
               className="relative w-full max-w-xs md:max-w-sm aspect-square bg-slate-800/50 border border-slate-700 rounded-lg shadow-xl overflow-hidden mb-4"
             >
-              <NextImage src={itemData.imageSrc || 'https://placehold.co/400x400.png'} alt={itemData.title} layout="fill" objectFit="contain" data-ai-hint="item large"/>
+              {/* Item detail image: Removed layout/objectFit, added fill and responsive sizes */}
+              <NextImage src={itemData.imageSrc || 'https://placehold.co/400x400.png'} alt={itemData.title} fill sizes="(max-width: 768px) 100vw, 50vw" data-ai-hint="item large"/>
             </motion.div>
 
             <div className="text-center w-full max-w-xs md:max-w-sm">
@@ -598,4 +600,3 @@ const SpecificItemDetailView: React.FC<SpecificItemDetailViewProps> = ({
     </div>
   );
 };
-
