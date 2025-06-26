@@ -292,8 +292,8 @@
 
 .pad-screen-grid {
   background-image:
-    repeating-linear-gradient(0deg, hsl(var(--foreground-hsl) / 0.2) 0px 1px, transparent 1px 20px),
-    repeating-linear-gradient(90deg, hsl(var(--foreground-hsl) / 0.2) 0px 1px, transparent 1px 20px);
+    repeating-linear-gradient(0deg, hsl(var(--foreground-hsl) / 0.1) 0px 1px, transparent 1px 20px),
+    repeating-linear-gradient(90deg, hsl(var(--foreground-hsl) / 0.1) 0px 1px, transparent 1px 20px);
 }
 
 .icon-glow {

@@ -3,13 +3,12 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import NextImage from 'next/image';
-import { X, ChevronDown, ChevronUp, ArrowLeft, ShoppingCart, Search } from 'lucide-react';
+import { X, ArrowLeft, ShoppingCart, Search } from 'lucide-react';
 import { useAppContext } from '@/contexts/AppContext';
 import { AnimatePresence, motion } from 'framer-motion';
 import { SHOP_CATEGORIES, ITEM_LEVELS, type ProductCategory, type ItemTile, type SpecificItemData, type ItemLevel } from '@/lib/game-items';
 import { cn } from '@/lib/utils';
 
-// Helper components
 interface NewStickyHeaderProps {
   activePage: 'products' | 'aboutUs';
   setActivePage: (page: 'products' | 'aboutUs') => void;
@@ -45,36 +44,59 @@ interface SpecificItemDetailViewProps {
   levelsAvailableForItem: ItemLevel[];
 }
 
-const ProgressBar: React.FC<{ label: string; value: number; max: number; colorClass?: string }> = ({ label, value, max, colorClass = "bg-green-500" }) => (
-  <div className="mb-2">
-    <div className="flex justify-between text-xs text-slate-400 mb-0.5">
-      <span>{label}</span>
-      <span>{value} / {max}</span>
-    </div>
-    <div className="w-full bg-slate-700 rounded-full h-2.5 overflow-hidden">
-      <div className={`${colorClass} h-2.5 rounded-full transition-all duration-500`} style={{ width: `${(value / max) * 100}%` }}></div>
-    </div>
-  </div>
-);
+const ProgressBar: React.FC<{ label: string; value: number; max?: number; colorClass?: string }> = ({ label, value, max, colorClass = "bg-green-500" }) => {
+  const displayMax = max ?? (label === 'Strength' ? 800 : label === 'Resistance' ? 80 : 100);
+  return (
+    <>
+ <div className="flex justify-between text-xs text-slate-400 mb-0.5">
+ <span>{label}</span>
+ <span>{value} / {displayMax}</span>
+ </div>
+ <div className="w-full bg-slate-700 rounded-full h-2.5 overflow-hidden">
+ <div className={`${colorClass} h-2.5 rounded-full transition-all duration-500`} style={{ width: `${(value / displayMax) * 100}%` }}></div>
+ </div>
+ </>
+  )
+};
 
-// --- Main Shop Component ---
+
 export function QuantumIndustries() {
   const { closeSpyShop, playerInfo } = useAppContext();
   const [activePage, setActivePage] = useState<'products' | 'aboutUs'>('products');
   
-  const contentScrollContainerRef = useRef<HTMLDivElement>(null); // Main scroller for products / container for about us
-  const aboutUsBackgroundElementRef = useRef<HTMLDivElement>(null); // For the sticky background image
-  const aboutUsContentScrollerRef = useRef<HTMLDivElement>(null); // NEW: For scrolling text content of "About Us"
+  const contentScrollContainerRef = useRef<HTMLDivElement>(null);
+  const aboutUsBackgroundElementRef = useRef<HTMLDivElement>(null);
+  const aboutUsContentScrollerRef = useRef<HTMLDivElement>(null);
 
   const [selectedProductCategory, setSelectedProductCategory] = useState<ProductCategory | null>(null);
   const [selectedItemBaseName, setSelectedItemBaseName] = useState<string | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<ItemLevel>(playerInfo?.stats.level as ItemLevel || ITEM_LEVELS[0]);
   const [currentViewItemData, setCurrentViewItemData] = useState<SpecificItemData | null>(null);
 
+  const { maxStrength, maxResistance, maxAttackFactor } = useMemo(() => {
+    let overallMaxStrength = 0;
+    let overallMaxResistance = 0;
+    let overallMaxAttackFactor = 0;
+
+    SHOP_CATEGORIES.forEach(category => {
+      category.itemSubCategories.forEach(subCategory => {
+        subCategory.items.forEach(itemTile => {
+          ITEM_LEVELS.forEach(level => {
+            const data = itemTile.getItemLevelData(level);
+            if (data) {
+              if (data.strength) overallMaxStrength = Math.max(overallMaxStrength, data.strength.current);
+              if (data.resistance) overallMaxResistance = Math.max(overallMaxResistance, data.resistance.current);
+              if (data.attackFactor) overallMaxAttackFactor = Math.max(overallMaxAttackFactor, data.attackFactor);
+            }
+          });
+        });
+      });
+    });
+    return { maxStrength: overallMaxStrength, maxResistance: overallMaxResistance, maxAttackFactor: overallMaxAttackFactor };
+  }, []);
   const isSmallHeader = selectedItemBaseName !== null || activePage === 'aboutUs' || !!selectedProductCategory;
 
   useEffect(() => {
-    // Reset selections and scroll positions when activePage or selectedProductCategory changes
     setSelectedItemBaseName(null);
     setCurrentViewItemData(null);
     
@@ -116,16 +138,14 @@ export function QuantumIndustries() {
 
   useEffect(() => {
     const bgElement = aboutUsBackgroundElementRef.current;
-    // The scroll source is now explicitly the aboutUsContentScrollerRef for the 'aboutUs' page
     const scrollSourceElement = activePage === 'aboutUs' ? aboutUsContentScrollerRef.current : null;
 
     if (activePage === 'aboutUs' && bgElement && scrollSourceElement) {
-        bgElement.style.backgroundImage = `url('/spyshop/about_page_panodark.jpg')`; // No overlay gradient
+        bgElement.style.backgroundImage = `url('/spyshop/about_page_panodark.jpg')`;
         bgElement.style.backgroundRepeat = 'no-repeat';
-        bgElement.style.backgroundSize = 'auto 100%'; // Image height matches container, width auto
+        bgElement.style.backgroundSize = 'auto 100%';
         bgElement.style.backgroundPositionX = '0%';
-        bgElement.style.backgroundPositionY = '50%'; // Vertically center
-        // bgElement.style.transition = 'background-position-x 0.05s linear';
+        bgElement.style.backgroundPositionY = '50%';
 
         const handleScroll = () => {
             const scrollHeight = scrollSourceElement.scrollHeight - scrollSourceElement.clientHeight;
@@ -138,7 +158,7 @@ export function QuantumIndustries() {
             }
         };
         
-        requestAnimationFrame(() => { // Ensure initial position is set after layout
+        requestAnimationFrame(() => { 
             handleScroll();
         });
 
@@ -151,7 +171,7 @@ export function QuantumIndustries() {
                 bgElement.style.backgroundPosition = '';
             }
         };
-    } else if (bgElement) { // Cleanup if not 'aboutUs' or elements are missing
+    } else if (bgElement) { 
         bgElement.style.backgroundImage = '';
         bgElement.style.backgroundPosition = '';
     }
@@ -231,7 +251,7 @@ export function QuantumIndustries() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
             transition={{ duration: 0.3 }}
-            className="h-full" // Ensure SpecificItemDetailView can take full height
+            className="h-full"
           >
             <SpecificItemDetailView
               itemData={currentViewItemData}
@@ -239,6 +259,9 @@ export function QuantumIndustries() {
               onPurchase={handlePurchase}
               selectedLevel={selectedLevel}
               onSelectLevel={handleSelectLevel}
+ maxStrength={maxStrength}
+ maxResistance={maxResistance}
+ maxAttackFactor={maxAttackFactor}
               playerLevel={playerInfo?.stats.level as ItemLevel || ITEM_LEVELS[0]}
               levelsAvailableForItem={levelsAvailableForItem}
             />
@@ -281,8 +304,6 @@ export function QuantumIndustries() {
   };
 
   const renderAboutUsPage = () => {
-    // This function now just returns the text content.
-    // The background and overlay are handled by parent elements when activePage === 'aboutUs'.
     return (
         <div className="max-w-3xl mx-auto p-6 md:p-10 text-slate-200" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.9), 0 0 5px rgba(0,0,0,0.5)' }}>
             <h2 className="text-4xl font-orbitron text-cyan-300 mb-8 text-center" style={{ textShadow: '0 0 8px rgba(0,255,255,0.7), 0 0 15px rgba(0,255,255,0.3)' }}>About Quantum Industries</h2>
@@ -318,7 +339,6 @@ export function QuantumIndustries() {
         transition={{ duration: 0.3, ease: "easeInOut" }}
         className="w-full h-full max-w-2xl md:max-w-4xl lg:max-w-6xl md:h-[90vh] md:max-h-[800px] bg-slate-950 text-slate-100 flex flex-col shadow-2xl shadow-cyan-500/30 border border-cyan-700/50 relative md:rounded-lg"
       >
-        {/* Background patterns for products page (only when activePage is products) */}
         {activePage === 'products' && (
           <>
             <div
@@ -342,27 +362,23 @@ export function QuantumIndustries() {
           isSmallHeader={isSmallHeader}
         />
         
-        {/* Main scrollable content area */}
         <div ref={contentScrollContainerRef} className="flex-grow overflow-y-auto scrollbar-hide relative z-[10]">
-          {/* Conditionally rendered STICKY background for About Us page */}
           {activePage === 'aboutUs' && (
             <div
               ref={aboutUsBackgroundElementRef}
               className="sticky top-0 left-0 w-full h-full z-[1] pointer-events-none"
-              // Background image styles applied in useEffect
             />
           )}
 
-          {/* Content area - wrapper for products or the "About Us" text scroller */}
           {activePage === 'aboutUs' ? (
             <div 
               ref={aboutUsContentScrollerRef} 
-              className="absolute inset-0 overflow-y-auto scrollbar-hide z-[4]" // Absolute, fills parent, scrolls its own content
+              className="absolute inset-0 overflow-y-auto scrollbar-hide z-[4]" 
             >
               {renderAboutUsPage()}
             </div>
           ) : (
-            <div className="relative z-[3]"> {/* Products page content, normal flow */}
+            <div className="relative z-[3]"> 
               {renderProductsPage()}
             </div>
           )}
@@ -384,7 +400,6 @@ const NewStickyHeader: React.FC<NewStickyHeaderProps> = ({ activePage, setActive
     <div className={cn("sticky top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out bg-slate-900/80 backdrop-blur-md border-b border-cyan-700/50 shadow-lg md:rounded-t-lg")}>
       {isSmallHeader ? (
         <div className="flex justify-between items-center w-full max-w-6xl mx-auto px-4 py-2">
-          {/* Small header logo: Removed layout/objectFit, added fill and sizes */}
           <div className="relative w-10 h-10 sm:w-12 sm:h-12"> 
             <NextImage src="/spyshop/Quantum Industries Icon.png" alt="QI Icon" fill sizes="64px" data-ai-hint="logo quantum small"/>
           </div>
@@ -413,14 +428,13 @@ const NewStickyHeader: React.FC<NewStickyHeaderProps> = ({ activePage, setActive
       ) : (
         <div className="flex flex-col items-center w-full max-w-6xl mx-auto px-6">
            <div className="flex justify-between items-center w-full"> 
-            {/* Full header logo: Reverted to fixed height for parent div and ensured object-contain on image */}
             <div className="relative w-full h-16 md:h-20 my-2"> 
               <NextImage 
                 src="/spyshop/Quantum Industries Icon Logo.png" 
                 alt="Quantum Industries Full Logo" 
                 fill 
                 sizes="(max-width: 768px) 100vw, 50vw" 
-                className="object-contain" // Use Tailwind's object-contain to maintain aspect ratio
+                className="object-contain"
                 data-ai-hint="logo quantum full"
               />
             </div>
@@ -464,11 +478,11 @@ const ProductNav: React.FC<ProductNavProps> = ({ selectedCategory, onSelectCateg
             className={`flex flex-col items-center rounded-md transition-all duration-200 w-24 h-[70px] justify-center flex-shrink-0
                         ${selectedCategory?.id === cat.id ? 'bg-cyan-600/40 scale-105 ring-1 ring-cyan-400' : 'hover:bg-slate-700/50'}`}
           >
-            {/* Category icons: Increased size from w-6 h-6 to w-7 h-7 */}
+            {/* Category icons */}
             <div className="relative w-10 h-10 mb-0.5">
               <NextImage src={cat.iconImageSrc} alt={cat.name || 'Category icon'} fill sizes="33vw" className="opacity-80 group-hover:opacity-100" data-ai-hint="icon category"/>
             </div>
-            {/* Category labels: Increased font size from text-[10px] to text-xs */}
+            {/* Category labels */}
             <span className={`text-[10px] leading-tight text-center ${selectedCategory?.id === cat.id ? 'text-cyan-300 font-semibold' : 'text-slate-300'}`}>
               {cat.name}
             </span>
@@ -520,6 +534,13 @@ const ItemDisplayGrid: React.FC<ItemDisplayGridProps> = ({ items, onSelectItem }
   if (!items || items.length === 0) {
     return <p className="text-center text-slate-400 mt-10">No items in this category yet, or clear your selection below.</p>;
   }
+
+  const getTileImageSrc = (item: ItemTile) => {
+ if (item.category === 'Hardware') {
+      return `/spyshop/tiles/hardware/${item.name.toLowerCase().replace(/ /g, '_')}.jpg`;
+ }
+    return '/Spi vs Spi placeholder.png';
+  };
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
       {items.map((item) => (
@@ -531,9 +552,8 @@ const ItemDisplayGrid: React.FC<ItemDisplayGridProps> = ({ items, onSelectItem }
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2, delay: Math.random() * 0.1 }}
-        >
-          {/* Item tile image: Removed layout/objectFit, added fill and responsive sizes. Added fallback for alt text. */}
-          <div className="w-full h-2/3 relative mb-2">
+        > {/* Removed padding around image */}
+          <div className="w-full h-2/3 relative"> {/* Removed mb-2 */}
             <NextImage src={item.tileImageSrc || '/spyshop/tiles/placeholder.png'} alt={item.name || 'Item image'} fill sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw" className="rounded-sm" data-ai-hint="item icon"/>
           </div>
           <span className="text-xs sm:text-sm font-rajdhani font-semibold text-cyan-200 leading-tight">{item.name}</span>
@@ -544,13 +564,13 @@ const ItemDisplayGrid: React.FC<ItemDisplayGridProps> = ({ items, onSelectItem }
 };
 
 
-const SpecificItemDetailView: React.FC<SpecificItemDetailViewProps> = ({
-  itemData, onBack, onPurchase, selectedLevel, onSelectLevel, playerLevel, levelsAvailableForItem
+const SpecificItemDetailView: React.FC<SpecificItemDetailViewProps & { maxStrength: number; maxResistance: number; maxAttackFactor: number }> = ({
+  itemData, onBack, onPurchase, selectedLevel, onSelectLevel, playerLevel, levelsAvailableForItem, maxStrength, maxResistance, maxAttackFactor
 }) => {
   if (!itemData) return <p className="text-center text-slate-400 p-8">Item details not found.</p>;
 
   return (
-    <div className="h-full flex flex-col relative"> {/* Main container is relative for children */}
+    <div className="h-full flex flex-col relative"> 
       <LevelSelectorBar
         selectedLevel={selectedLevel}
         onSelectLevel={onSelectLevel}
@@ -558,40 +578,61 @@ const SpecificItemDetailView: React.FC<SpecificItemDetailViewProps> = ({
         levelsAvailable={levelsAvailableForItem}
         onBack={onBack}
       />
-      {/* Scrollable content for item details */}
       <div className="flex-grow overflow-y-auto p-1 sm:p-2 md:p-4 scrollbar-hide">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 max-w-4xl mx-auto pt-4 md:pt-2">
           <div className="flex flex-col items-center">
-            <h2 className="text-2xl md:text-3xl font-orbitron text-cyan-300 mb-3 text-center">{itemData.title} <span className="text-orange-400 text-xl">L{itemData.level}</span></h2>
+            <h2 className="text-2xl md:text-3xl font-orbitron text-cyan-300 mb-3 text-center">{itemData.name} <span className="text-orange-400 text-xl">L{itemData.level}</span></h2>
             <motion.div
               className="relative w-full max-w-xs md:max-w-sm aspect-square bg-slate-800/50 border border-slate-700 rounded-lg shadow-xl overflow-hidden mb-4"
             >
-              {/* Item detail image: Removed layout/objectFit, added fill and responsive sizes. Added fallback for alt text. */}
               <NextImage src={itemData.imageSrc || 'https://placehold.co/400x400.png'} alt={itemData.title || 'Item detail image'} fill sizes="(max-width: 768px) 100vw, 50vw" data-ai-hint="item large"/>
             </motion.div>
 
             <div className="text-center w-full max-w-xs md:max-w-sm">
-              <p className="text-3xl font-semibold text-orange-400 mb-1">{itemData.cost} <span className="text-xl text-slate-400">ELINT</span></p>
+ <p className="text-3xl font-semibold text-orange-400 mb-1">{itemData.cost} <span className="text-xl text-slate-400">ELINT</span></p>
               <button
                 onClick={() => onPurchase(itemData.id)}
                 className="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold py-2.5 px-4 rounded-md transition-colors duration-200 flex items-center justify-center text-lg shadow-md hover:shadow-lg"
               >
                 <ShoppingCart className="w-5 h-5 mr-2" /> Purchase
               </button>
-              <p className="text-xs text-slate-500 mt-1">Scarcity: <span className="font-medium text-slate-400">{itemData.scarcity}</span></p>
+ <p className="text-xs text-slate-500 mt-1 text-left">Scarcity: <span className="font-medium text-slate-400">{itemData.scarcity}</span></p>
             </div>
           </div>
 
           <div className="md:pt-2">
+ {/* Progress Bars moved below scarcity text */}
+            <div className="w-full max-w-xs md:max-w-sm space-y-3 mt-4"> {/* Added margin-top to separate from purchase section */}
+              {/* Hardware (Strength and Resistance) */}
+              {itemData.category === 'Hardware' && itemData.strength && (
+ <ProgressBar label="Strength" value={itemData.strength.current} max={maxStrength} colorClass="bg-red-500"/>
+              )}
+              {itemData.category === 'Hardware' && itemData.resistance && (
+ <ProgressBar label="Resistance" value={itemData.resistance.current} max={maxResistance} colorClass="bg-blue-500"/>
+              )}
+              {/* Lock Fortifiers (Resistance only) */}
+              {itemData.category === 'Lock Fortifiers' && itemData.resistance && (
+ <ProgressBar label="Resistance" value={itemData.resistance.current} max={maxResistance} colorClass="bg-blue-500"/>
+              )}
+              {/* Nexus Upgrades */}
+              {itemData.category === 'Nexus Upgrades' && itemData.itemTypeDetail === 'Security Camera' && itemData.level !== undefined && (
+ <ProgressBar label="Alerts" value={itemData.level} max={8} colorClass="bg-orange-500"/>
+              )}
+              {itemData.category === 'Nexus Upgrades' && itemData.itemTypeDetail === 'Reinforced Foundation' && itemData.level !== undefined && (
+ <ProgressBar label="Difficulty Increase" value={itemData.level} max={8} colorClass="bg-green-500"/>
+              )}
+              {itemData.category === 'Nexus Upgrades' && itemData.itemTypeDetail === 'Emergency Repair System' && itemData.strength?.current !== undefined && <ProgressBar label="Vault Strength" value={itemData.strength.current} max={maxStrength} colorClass="bg-red-500"/>}
+              {itemData.category === 'Nexus Upgrades' && itemData.itemTypeDetail === 'Emergency Power Cell' && itemData.level !== undefined && (
+ <ProgressBar label="Difficulty Increase" value={itemData.level} max={8} colorClass="bg-green-500" />
+              )}
+              {/* Infiltration Gear (Attack Factor) */}
+              {itemData.category === 'Infiltration Gear' && itemData.attackFactor !== undefined && <ProgressBar label="Attack Factor" value={itemData.attackFactor} max={maxAttackFactor || 100} colorClass="bg-yellow-500" />}
+              {/* Assault Tech (Difficulty Decrease) */}
+              {itemData.category === 'Assault Tech' && itemData.level !== undefined && <ProgressBar label="Difficulty Decrease" value={itemData.level} max={8} colorClass="bg-purple-500" />}
+            </div>
             <div className="bg-slate-800/60 border border-slate-700/80 rounded-lg p-4 shadow-lg">
               <h3 className="text-xl font-orbitron text-sky-300 mb-2">Description</h3>
               <p className="text-sm text-slate-300 mb-4 leading-relaxed">{itemData.description}</p>
-
-              <h3 className="text-xl font-orbitron text-sky-300 mb-3">Details</h3>
-              {itemData.strength && <ProgressBar label="Strength" value={itemData.strength.current} max={itemData.strength.max} colorClass="bg-red-500" />}
-              {itemData.resistance && <ProgressBar label="Resistance" value={itemData.resistance.current} max={itemData.resistance.max} colorClass="bg-blue-500" />}
-              {itemData.attackFactor && <ProgressBar label="Attack Factor" value={itemData.attackFactor} max={100} colorClass="bg-yellow-500" />}
-
               <div className="text-sm space-y-1.5 text-slate-300 mt-3">
                 <p><strong className="text-slate-400">Category:</strong> {itemData.category}</p>
                 {itemData.itemTypeDetail && <p><strong className="text-slate-400">Type:</strong> {itemData.itemTypeDetail}</p>}

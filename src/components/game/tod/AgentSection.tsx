@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useAppContext } from '@/contexts/AppContext';
+import { useAppContext, Faction } from '@/contexts/AppContext';
 import { HolographicButton } from '@/components/game/shared/HolographicPanel';
 import { Fingerprint, Info, Zap, LockOpen, Lock, Trophy, BookOpen, Power, Brain, Puzzle } from 'lucide-react'; // Added Brain and Puzzle icons
 import { cn } from '@/lib/utils';
@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Settings } from 'lucide-react'; // Removed BookOpen, Power as they are imported above
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { XP_THRESHOLDS } from '@/lib/constants';
-import { HardwareItem, InfiltrationGearItem, LockFortifierItem, ITEM_LEVELS, HARDWARE_ITEMS, INFILTRATION_GEAR_ITEMS } from '@/lib/game-items'; // Import necessary item types and lists
+import { HardwareItem, InfiltrationGearItem, LockFortifierItem, ITEM_LEVELS, HARDWARE_ITEMS, INFILTRATION_GEAR_ITEMS, ItemLevel } from '@/lib/game-items'; // Import necessary item types and lists
 
 
 const PEEK_AMOUNT = 20; // Pixels for the screen peek
@@ -21,9 +21,9 @@ const AgentDossierView = React.memo(() => {
   const { theme: currentGlobalTheme } = useTheme();
 
   const handleFactionChange = useCallback(() => {
-    let newFaction = faction === 'Cyphers' ? 'Shadows' : 'Cyphers';
+    let newFaction: Faction = faction === 'Cyphers' ? 'Shadows' : 'Cyphers';
     if (faction === 'Observer') {
-        newFaction = 'Cyphers';
+ newFaction = 'Cyphers' as Faction; // Explicitly cast to Faction
         addMessage({ type: 'system', text: `Observer protocol overridden. Faction allegiance protocols engaged. Defaulting to Cyphers.` });
     } else {
         addMessage({ type: 'system', text: `Faction allegiance protocols updated to: ${newFaction}. Coordinating with HQ.` });
@@ -56,7 +56,7 @@ const AgentDossierView = React.memo(() => {
         <div>
           <p className="font-semibold text-muted-foreground">Stats & Performance:</p>
           <p>Level: {playerStats.level}</p>
-          <Progress value={xpProgressForDossier} className="w-full h-1.5 mt-1 bg-primary/20 [&>div]:bg-primary" />
+          <Progress value={xpProgressForDossier} className="w-full max-w-[65%] h-1.5 mt-1 bg-primary/20 [&>div]:bg-primary" />
           <p className="text-xs text-muted-foreground">{playerStats.xp} / {nextLevelXpTargetForDossier} XP</p>
         </div>
         <div>
@@ -137,7 +137,7 @@ const IntelFilesView = React.memo(() => {
         {categories.map(cat => (
           <li key={cat.id}>
             <HolographicButton
-              className="w-full justify-start text-left !bg-transparent hover:!bg-primary/10 !py-1.5"
+              className="w-full justify-start text-left !bg-transparent hover:!bg-primary/10 !py-1.5 hover:text-green-400 transition-colors"
               onClick={() => setActiveCategory(cat.id)}
               explicitTheme={currentGlobalTheme}
             >
@@ -157,9 +157,9 @@ const SettingsView = React.memo(() => {
     <ScrollArea className="h-full p-3 font-rajdhani">
       <h3 className="text-xl font-orbitron mb-4 holographic-text">Settings</h3>
       <ul className="space-y-2 text-sm">
-        <li><HolographicButton className="w-full justify-start text-left !bg-transparent hover:!bg-primary/10 !py-1.5" explicitTheme={currentGlobalTheme}>Notifications (Placeholder)</HolographicButton></li>
-        <li><HolographicButton className="w-full justify-start text-left !bg-transparent hover:!bg-primary/10 !py-1.5" explicitTheme={currentGlobalTheme}>Sound (Placeholder)</HolographicButton></li>
-        <li><HolographicButton className="w-full justify-start text-left !bg-transparent hover:!bg-primary/10 !py-1.5" explicitTheme={currentGlobalTheme}>Language (Placeholder)</HolographicButton></li>
+        <li><HolographicButton className="w-full justify-start text-left !bg-transparent hover:!bg-primary/10 !py-1.5 hover:text-green-400 transition-colors" explicitTheme={currentGlobalTheme}>Notifications (Placeholder)</HolographicButton></li>
+        <li><HolographicButton className="w-full justify-start text-left !bg-transparent hover:!bg-primary/10 !py-1.5 hover:text-green-400 transition-colors" explicitTheme={currentGlobalTheme}>Sound (Placeholder)</HolographicButton></li>
+        <li><HolographicButton className="w-full justify-start text-left !bg-transparent hover:!bg-primary/10 !py-1.5 hover:text-green-400 transition-colors" explicitTheme={currentGlobalTheme}>Language (Placeholder)</HolographicButton></li>
         <li><HolographicButton className="w-full justify-start text-left !bg-transparent hover:!bg-primary/10 !py-1.5 text-destructive" explicitTheme={currentGlobalTheme}>Delete History (Placeholder)</HolographicButton></li>
       </ul>
     </ScrollArea>
@@ -193,14 +193,14 @@ const TrainingView = React.memo(() => {
       <div className="space-y-2 text-sm">
         <HolographicButton
           className="w-full justify-start text-left !bg-transparent hover:!bg-primary/10 !py-1.5"
-          explicitTheme={currentGlobalTheme}
+          explicitTheme={currentGlobalTheme} // Apply green hover effect
           onClick={() => handleStartMinigame('Cypher Lock', 1, 'Pick')}
         >
           Key Cracker: L1 Cypher Lock (w/ L1 Pick)
         </HolographicButton>
         <HolographicButton
           className="w-full justify-start text-left !bg-transparent hover:!bg-primary/10 !py-1.5"
-          explicitTheme={currentGlobalTheme}
+          explicitTheme={currentGlobalTheme} // Apply green hover effect
           onClick={() => handleStartMinigame('Quantum Entanglement Lock', 1, 'Pick')}
         >
           Quantum Circuit Weaver: L1 Quantum Entanglement Lock (w/ L1 Pick)
@@ -347,17 +347,34 @@ export function AgentSection({ parallaxOffset }: AgentSectionProps) {
         ref={topContentRef}
         className="absolute inset-0 flex flex-col z-10 pointer-events-none" 
       >
-        <div ref={titleAreaContentRef} className="flex-grow flex flex-col items-center justify-center pt-4 md:pt-2 pb-2 text-center relative overflow-hidden">
+        <div
+          ref={titleAreaContentRef}
+          className="flex-grow flex flex-col items-center justify-center pt-4 md:pt-2 pb-2 text-center relative overflow-hidden group"
+        >
+          <h1 className="text-3xl md:text-4xl font-orbitron holographic-text">{playerSpyName || "Agent"}</h1>
+          {/* Conditional rendering for Fingerprint icon (Observer) or background emblem overlay (Cyphers/Shadows) */}
+          {faction === 'Observer' && (
             <div className="absolute inset-0 flex items-center justify-center -z-10 opacity-10">
               <Fingerprint className="w-48 h-48 md:w-64 md:h-64 text-primary icon-glow" />
             </div>
-            <h1 className="text-3xl md:text-4xl font-orbitron holographic-text">{playerSpyName || "Agent"}</h1>
-            <p className={`text-lg font-semibold ${faction === 'Cyphers' ? 'text-blue-400' : faction === 'Shadows' ? 'text-red-400' : 'text-gray-400'}`}>{faction}</p>
+          )}
+          <p className={cn(
+            "text-lg font-semibold",
+            faction === 'Cyphers' ? 'text-blue-400' : faction === 'Shadows' ? 'text-red-400' : 'text-gray-400'
+          )}>{faction}</p>
+          {/* Overlay for opacity effect on background images */}
+          {faction !== 'Observer' && (
+            <div className="absolute inset-0 -z-10"
+              style={{
+                backgroundImage: faction === 'Cyphers' ? 'url(/backgrounds/cyphers_emblem.png)' : faction === 'Shadows' ? 'url(/backgrounds/shadows_emblem.png)' : 'none',
+                backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', opacity: 0.7
+              }} />
+          )}
         </div>
         <div ref={statsAreaRef} className="flex-shrink-0 text-center pt-2 pb-4 px-2">
             <div className="w-full max-w-md mx-auto">
               <p className="text-sm text-muted-foreground">Agent Rank: {playerStats.level}</p>
-              <Progress value={xpProgress} className="w-full h-1.5 mt-1 bg-primary/20 [&>div]:bg-primary" />
+              <Progress value={xpProgress} className="w-full max-w-[65%] h-1.5 mt-1 bg-primary/20 [&>div]:bg-primary mx-auto" />
               <p className="text-xs text-muted-foreground">{xpForCurrentLevel} / {xpToNextLevelSpan} XP ({playerStats.xp} total)</p>
             </div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-3 text-sm w-full max-w-md mx-auto font-rajdhani">
@@ -397,7 +414,7 @@ export function AgentSection({ parallaxOffset }: AgentSectionProps) {
           ref={padButtonPanelRef}
           className={cn(
             "h-[60px] flex-shrink-0 flex items-center justify-between px-4",
-            "bg-black/70 rounded-t-lg", // Fixed background color, ensure top rounding
+            "bg-black/70 rounded-t-lg",
             "pad-gloss-effect"
           )}
             style={buttonPanelInlineStyle}
@@ -420,7 +437,6 @@ export function AgentSection({ parallaxOffset }: AgentSectionProps) {
               >
                 <BookOpen className="w-5 h-5" />
               </HolographicButton>
-              {/* NEW: Training Button */}
               <HolographicButton
                 onClick={() => setPadScreenView('training')}
                 className={cn("!p-1.5", padScreenView === 'training' && "active-pad-button")}
@@ -460,7 +476,7 @@ export function AgentSection({ parallaxOffset }: AgentSectionProps) {
         <div
           className={cn(
             "flex-grow min-h-0",
-            "bg-black/70 rounded-b-lg", // Fixed background color, ensure bottom rounding
+            "bg-black/70 rounded-b-lg", // Slightly darker background color
           )}
           style={screenWrapperInlineStyle} 
         >
