@@ -88,7 +88,7 @@ const CarouselItem = React.memo(function CarouselItem({ displayItem, index, tota
     const [texture, setTexture] = useState<THREE.CanvasTexture | null>(null);
 
     const handleCanvasRendered = useCallback((canvas: HTMLCanvasElement) => {
-        console.log(`CarouselItem (${displayItem.title}): Texture rendered callback received.`);
+        // console.log(`CarouselItem (${displayItem.title}): Texture rendered callback received.`);
         const newTexture = new THREE.CanvasTexture(canvas);
         newTexture.needsUpdate = true;
         setTexture(oldTexture => { 
@@ -98,7 +98,7 @@ const CarouselItem = React.memo(function CarouselItem({ displayItem, index, tota
     }, [displayItem.title]);
 
     useEffect(() => () => { 
-        console.log(`CarouselItem (${displayItem.title}): Disposing texture on unmount.`);
+        // console.log(`CarouselItem (${displayItem.title}): Disposing texture on unmount.`);
         texture?.dispose(); 
     }, [texture, displayItem.title]);
     
@@ -110,7 +110,7 @@ const CarouselItem = React.memo(function CarouselItem({ displayItem, index, tota
             const z = carouselRadius * Math.cos(angle);
             meshRef.current.position.set(x, 0, z);
             meshRef.current.userData = { displayItem, isCarouselItem: true, id: displayItem.id };
-            console.log(`CarouselItem (${displayItem.title}): Position set and userData updated.`);
+            // console.log(`CarouselItem (${displayItem.title}): Position set and userData updated.`);
         }
     }, [index, totalItems, carouselRadius, displayItem]);
 
@@ -169,7 +169,7 @@ const EquipmentCarousel: React.FC<{
         const canvasElement = gl.domElement;
         
         const startInteraction = (e: PointerEvent) => {
-            console.log('startInteraction: Fired', { pointerId: e.pointerId, isDown: interactionState.isDown });
+            // console.log('startInteraction: Fired', { pointerId: e.pointerId, isDown: interactionState.isDown });
             if (interactionState.isDown) return; // Already interacting
             interactionState.isDown = true;
             interactionState.pointerId = e.pointerId;
@@ -189,7 +189,7 @@ const EquipmentCarousel: React.FC<{
             // We just need to stop auto-rotate on interaction, the item will pick up its spin when auto-rotate resumes.
             interactionState.lastRotation = group.current.rotation.y; 
             canvasElement.style.cursor = 'grabbing';
-            console.log('startInteraction: State set to', { ...interactionState });
+            // console.log('startInteraction: State set to', { ...interactionState });
         };
 
         const moveInteraction = (e: PointerEvent) => {
@@ -201,7 +201,7 @@ const EquipmentCarousel: React.FC<{
             // Check if it's a drag
             if (!interactionState.isDragging && (deltaX ** 2 + deltaY ** 2) > CLICK_DRAG_THRESHOLD_SQUARED) {
                 interactionState.isDragging = true;
-                console.log('moveInteraction: Detected as drag start. isDragging now:', interactionState.isDragging);
+                // console.log('moveInteraction: Detected as drag start. isDragging now:', interactionState.isDragging);
             }
 
             if (interactionState.isDragging && itemsToDisplay.length > 1) { // Only drag-rotate the group if there's a carousel
@@ -213,10 +213,10 @@ const EquipmentCarousel: React.FC<{
 
         const endInteraction = (e: PointerEvent) => {
             const finalIsDraggingStateAtEnd = interactionState.isDragging; // Capture current state of isDragging
-            console.log('endInteraction: Fired', { pointerId: e.pointerId, initialIsDown: interactionState.isDown, initialIsDragging: interactionState.isDragging, capturedIsDragging: finalIsDraggingStateAtEnd });
+            // console.log('endInteraction: Fired', { pointerId: e.pointerId, initialIsDown: interactionState.isDown, initialIsDragging: interactionState.isDragging, capturedIsDragging: finalIsDraggingStateAtEnd });
 
             if (!interactionState.isDown || e.pointerId !== interactionState.pointerId) {
-                console.log('endInteraction: Mismatch or not down, trying to clean up.');
+                // console.log('endInteraction: Mismatch or not down, trying to clean up.');
                 try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
                 canvasElement.style.cursor = 'grab';
                 appContext.setIsScrollLockActive(false);
@@ -234,18 +234,18 @@ const EquipmentCarousel: React.FC<{
 
             const dragDuration = performance.now() - interactionState.downTime;
             
-            console.log('endInteraction: Before outcome logic:', { finalIsDraggingStateAtEnd, dragDuration, CLICK_DURATION_THRESHOLD });
+            // console.log('endInteraction: Before outcome logic:', { finalIsDraggingStateAtEnd, dragDuration, CLICK_DURATION_THRESHOLD });
 
             if (finalIsDraggingStateAtEnd) { // This means moveInteraction set it to true
-                console.log('endInteraction: Handling as a drag.');
+                // console.log('endInteraction: Handling as a drag.');
                 // For a drag, resume auto-rotate after a delay
                 if (interactionState.autoRotateTimeout) clearTimeout(interactionState.autoRotateTimeout);
                 interactionState.autoRotateTimeout = setTimeout(() => {
                     autoRotateRef.current = true;
-                    console.log('endInteraction: Auto-rotate resumed after drag timeout.');
+                    // console.log('endInteraction: Auto-rotate resumed after drag timeout.');
                 }, AUTO_ROTATE_RESUME_DELAY);
             } else if (dragDuration < CLICK_DURATION_THRESHOLD) { // Not a drag, and short duration = click
-                console.log('endInteraction: Handling as a click.');
+                // console.log('endInteraction: Handling as a click.');
                 const rect = canvasElement.getBoundingClientRect();
                 const pointerVector = new THREE.Vector2(
                     ((e.clientX - rect.left) / rect.width) * 2 - 1,
@@ -260,17 +260,17 @@ const EquipmentCarousel: React.FC<{
                     if (obj?.userData?.isCarouselItem) {
                         onItemClick(obj.userData.displayItem);
                         clickedItem = true;
-                        console.log('endInteraction: Clicked a carousel item. Item ID:', obj.userData.id);
+                        c// onsole.log('endInteraction: Clicked a carousel item. Item ID:', obj.userData.id);
                     }
                 }
                 // For a click, resume auto-rotate immediately.
                 if (interactionState.autoRotateTimeout) clearTimeout(interactionState.autoRotateTimeout);
                 autoRotateRef.current = true; 
-                console.log('endInteraction: Auto-rotate resumed immediately after click.');
+                // console.log('endInteraction: Auto-rotate resumed immediately after click.');
             } else {
                  // Fallback: This path should ideally not be hit if thresholds are good
                  // It means not a drag, but also not a quick enough click (e.g., long press without drag)
-                 console.log('endInteraction: Fallback: long press/tap without drag. Resuming auto-rotate immediately.');
+                 // console.log('endInteraction: Fallback: long press/tap without drag. Resuming auto-rotate immediately.');
                  if (interactionState.autoRotateTimeout) clearTimeout(interactionState.autoRotateTimeout);
                  autoRotateRef.current = true; // Resume auto-rotate immediately
             }
@@ -279,16 +279,16 @@ const EquipmentCarousel: React.FC<{
             interactionState.isDown = false;
             interactionState.isDragging = false;
             interactionState.pointerId = null;
-            console.log('endInteraction: State reset complete.', { finalInteractionState: { ...interactionState } });
+            // console.log('endInteraction: State reset complete.', { finalInteractionState: { ...interactionState } });
         };
 
         const resumeAutoRotate = () => {
-            console.log('resumeAutoRotate: Fired. Is down?', interactionState.isDown);
+            // console.log('resumeAutoRotate: Fired. Is down?', interactionState.isDown);
             if (interactionState.isDown) return; // Don't resume if still interacting
             if (interactionState.autoRotateTimeout) clearTimeout(interactionState.autoRotateTimeout);
             interactionState.autoRotateTimeout = setTimeout(() => {
                 autoRotateRef.current = true;
-                console.log('resumeAutoRotate: Auto-rotate re-enabled via timeout.');
+                c// onsole.log('resumeAutoRotate: Auto-rotate re-enabled via timeout.');
             }, AUTO_ROTATE_RESUME_DELAY);
         };
         
@@ -436,15 +436,15 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
         };
 
         const generateChildrenForItem = (item: DisplayItem): DisplayItem[] => {
-            console.log('generateChildrenForItem: called for item:', item.id, 'with stackType:', item.stackType, 'and path:', item.path);
+            // console.log('generateChildrenForItem: called for item:', item.id, 'with stackType:', item.stackType, 'and path:', item.path);
             const { stackType, path } = item; 
             let children: DisplayItem[] = [];
             
             if (stackType === 'category') {
                 const categoryToExpand = path[0] as ItemCategory;
-                console.log('generateChildrenForItem: Expanding category:', categoryToExpand);
+                // console.log('generateChildrenForItem: Expanding category:', categoryToExpand);
                 const itemsInExpandedCategory = inventoryArray.filter(i => i.baseDef.category === categoryToExpand);
-                console.log('generateChildrenForItem: Items in category:', itemsInExpandedCategory.map(i => i.baseDef.name));
+                // console.log('generateChildrenForItem: Items in category:', itemsInExpandedCategory.map(i => i.baseDef.name));
 
                 const groupedByBaseName = itemsInExpandedCategory.reduce((acc, i) => { 
                     (acc[i.baseDef.name] = acc[i.baseDef.name] || []).push(i); 
@@ -457,9 +457,9 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
                 });
             } else if (stackType === 'itemType') {
                 const [category, baseName] = path; 
-                console.log('generateChildrenForItem: Expanding itemType:', baseName, 'in category:', category);
+                // console.log('generateChildrenForItem: Expanding itemType:', baseName, 'in category:', category);
                 const itemsOfExpandedType = inventoryArray.filter(i => i.baseDef.category === category && i.baseDef.name === baseName);
-                console.log('generateChildrenForItem: Items of expanded type:', itemsOfExpandedType.map(i => `${i.baseDef.name} (Inv ID: ${i.invDetails.id})`));
+                // console.log('generateChildrenForItem: Items of expanded type:', itemsOfExpandedType.map(i => `${i.baseDef.name} (Inv ID: ${i.invDetails.id})`));
 
                 // Group items of the same base type by their specific inventory item ID (which implies level/instance)
                 const groupedByInvId = itemsOfExpandedType.reduce((acc, i) => {
@@ -469,7 +469,7 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
 
                 Object.entries(groupedByInvId).forEach(([invId, items]) => {
                     const firstItemInStack = items[0]; // All items in this group have the same invDetails.id
-                    console.log(`generateChildrenForItem: Processing invId: ${invId}, quantity: ${firstItemInStack.invDetails.quantity}`);
+                    // console.log(`generateChildrenForItem: Processing invId: ${invId}, quantity: ${firstItemInStack.invDetails.quantity}`);
                     if (firstItemInStack.invDetails.quantity > 1) {
                         // If there's more than one of the exact same item instance, stack them by itemLevel
                         const stack = createAggregatedStack(items, 'itemLevel', firstItemInStack.baseDef.title || firstItemInStack.baseItem?.name || firstItemInStack.baseDef.name, 'itemLevel', [...path, invId]);
@@ -481,10 +481,10 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
                 });
             } else if (stackType === 'itemLevel') {
                 const invIdToExpand = path[path.length - 1];
-                console.log('generateChildrenForItem: Expanding itemLevel for invId:', invIdToExpand);
+                // console.log('generateChildrenForItem: Expanding itemLevel for invId:', invIdToExpand);
                 const itemToExpandDetails = inventoryArray.find(i => i.invDetails.id === invIdToExpand);
                 if (itemToExpandDetails) { 
-                    console.log('generateChildrenForItem: Found item details for invId:', itemToExpandDetails.baseDef.name, 'Quantity:', itemToExpandDetails.invDetails.quantity);
+                    // console.log('generateChildrenForItem: Found item details for invId:', itemToExpandDetails.baseDef.name, 'Quantity:', itemToExpandDetails.invDetails.quantity);
                     for (let i = 0; i < itemToExpandDetails.invDetails.quantity; i++) {
                         children.push(createIndividualDisplayItem(itemToExpandDetails.invDetails, itemToExpandDetails.baseDef, [...path], i)); 
                     }
@@ -492,7 +492,7 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
                     console.warn('generateChildrenForItem: Could not find item details for invId:', invIdToExpand);
                 }
             }
-            console.log('generateChildrenForItem: Returning children:', children.map(c => ({ id: c.id, title: c.title, stackType: c.stackType })));
+            // console.log('generateChildrenForItem: Returning children:', children.map(c => ({ id: c.id, title: c.title, stackType: c.stackType })));
             return children.sort((a,b) => a.title.localeCompare(b.title));
         };
         
@@ -540,7 +540,7 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
             ([entry]) => {
                 autoRotateRef.current = entry.isIntersecting; // Stop when not visible, start when visible
                 if (!entry.isIntersecting && carouselDisplayItems.length !== initialItems.length) {
-                    console.log('Observer: Section not intersecting and carousel expanded. Resetting to initial view.');
+                    // console.log('Observer: Section not intersecting and carousel expanded. Resetting to initial view.');
                     setCarouselDisplayItems(initialItems); // Reset view
                 }
             }, { threshold: 0.1 }
@@ -565,10 +565,10 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
     }, [currentGlobalTheme, themeVersion]);
     
     const handleCarouselItemClick = useCallback((clickedItem: DisplayItem) => {
-        console.log('handleCarouselItemClick: Clicked item:', clickedItem.id, 'Stack Type:', clickedItem.stackType);
+        // console.log('handleCarouselItemClick: Clicked item:', clickedItem.id, 'Stack Type:', clickedItem.stackType);
         
         if (clickedItem.stackType === 'individual') {
-            console.log('handleCarouselItemClick: Individual item clicked. Opening TOD Window.');
+            // console.log('handleCarouselItemClick: Individual item clicked. Opening TOD Window.');
             autoRotateRef.current = false;
             // The closeTODWindow() call is removed here as it's now handled by AppContext
             // to ensure no flashing when opening a new general TOD window.
@@ -591,16 +591,16 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
             // If it's a stack, and we're expanding it, we want to close any existing TOD window
             // because the user is navigating within the carousel, not viewing an item detail.
             closeTODWindow(); 
-            console.log('handleCarouselItemClick: Stack clicked. Generating children.');
+            // console.log('handleCarouselItemClick: Stack clicked. Generating children.');
             const children = generateChildrenForItem(clickedItem);
-            console.log('handleCarouselItemClick: Generated children:', children.map(c => c.id));
+            // console.log('handleCarouselItemClick: Generated children:', children.map(c => c.id));
             if (children.length > 0) {
                  setCarouselDisplayItems(currentItems => {
                      const itemIndex = currentItems.findIndex(item => item.id === clickedItem.id);
                      if (itemIndex > -1) {
                          const newItems = [...currentItems];
                          newItems.splice(itemIndex, 1, ...children);
-                         console.log('handleCarouselItemClick: Updating carousel display items with new items. New array length:', newItems.length);
+                         // console.log('handleCarouselItemClick: Updating carousel display items with new items. New array length:', newItems.length);
                          return newItems;
                      }
                      console.warn('handleCarouselItemClick: Clicked item not found in current carousel items for replacement. This should not happen.');
@@ -721,7 +721,7 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
                             Equipment Locker
                         </h2>
                         <HolographicButton onClick={() => {
-                            console.log('Shop button clicked in EquipmentLockerSection. Opening Spy Shop.');
+                            // console.log('Shop button clicked in EquipmentLockerSection. Opening Spy Shop.');
                             openSpyShop();
                         }} className="!p-2" aria-label="Open Spy Shop" explicitTheme={currentGlobalTheme}>
                             <ShoppingCart className="w-5 h-5 icon-glow" />
