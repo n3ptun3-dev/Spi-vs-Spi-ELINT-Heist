@@ -413,9 +413,16 @@ const NewStickyHeader: React.FC<NewStickyHeaderProps> = ({ activePage, setActive
       ) : (
         <div className="flex flex-col items-center w-full max-w-6xl mx-auto px-6">
            <div className="flex justify-between items-center w-full"> 
-            {/* Full header logo: Removed layout/objectFit, added fill and sizes */}
-            <div className="relative w-full h-16 md:h-20 my-2 flex-grow"> 
-              <NextImage src="/spyshop/Quantum Industries Icon Logo.png" alt="Quantum Industries Full Logo" fill sizes="(max-width: 768px) 100vw, 50vw" data-ai-hint="logo quantum full"/>
+            {/* Full header logo: Reverted to fixed height for parent div and ensured object-contain on image */}
+            <div className="relative w-full h-16 md:h-20 my-2"> 
+              <NextImage 
+                src="/spyshop/Quantum Industries Icon Logo.png" 
+                alt="Quantum Industries Full Logo" 
+                fill 
+                sizes="(max-width: 768px) 100vw, 50vw" 
+                className="object-contain" // Use Tailwind's object-contain to maintain aspect ratio
+                data-ai-hint="logo quantum full"
+              />
             </div>
           </div>
           <div className="flex justify-center items-center space-x-4 w-full pb-2"> 
@@ -454,13 +461,14 @@ const ProductNav: React.FC<ProductNavProps> = ({ selectedCategory, onSelectCateg
           <button
             key={cat.id}
             onClick={() => onSelectCategory(cat)}
-            className={`flex flex-col items-center p-2 rounded-md transition-all duration-200 w-24 h-[70px] justify-center flex-shrink-0
+            className={`flex flex-col items-center rounded-md transition-all duration-200 w-24 h-[70px] justify-center flex-shrink-0
                         ${selectedCategory?.id === cat.id ? 'bg-cyan-600/40 scale-105 ring-1 ring-cyan-400' : 'hover:bg-slate-700/50'}`}
           >
-            {/* Category icons: Removed layout/objectFit, added fill and sizes */}
-            <div className="relative w-6 h-6 mb-0.5">
-              <NextImage src={cat.iconImageSrc} alt={cat.name} fill sizes="33vw" className="opacity-80 group-hover:opacity-100" data-ai-hint="icon category"/>
+            {/* Category icons: Increased size from w-6 h-6 to w-7 h-7 */}
+            <div className="relative w-10 h-10 mb-0.5">
+              <NextImage src={cat.iconImageSrc} alt={cat.name || 'Category icon'} fill sizes="33vw" className="opacity-80 group-hover:opacity-100" data-ai-hint="icon category"/>
             </div>
+            {/* Category labels: Increased font size from text-[10px] to text-xs */}
             <span className={`text-[10px] leading-tight text-center ${selectedCategory?.id === cat.id ? 'text-cyan-300 font-semibold' : 'text-slate-300'}`}>
               {cat.name}
             </span>
@@ -524,9 +532,9 @@ const ItemDisplayGrid: React.FC<ItemDisplayGridProps> = ({ items, onSelectItem }
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2, delay: Math.random() * 0.1 }}
         >
-          {/* Item tile image: Removed layout/objectFit, added fill and responsive sizes */}
+          {/* Item tile image: Removed layout/objectFit, added fill and responsive sizes. Added fallback for alt text. */}
           <div className="w-full h-2/3 relative mb-2">
-            <NextImage src={item.tileImageSrc || '/spyshop/tiles/placeholder.png'} alt={item.name} fill sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw" className="rounded-sm" data-ai-hint="item icon"/>
+            <NextImage src={item.tileImageSrc || '/spyshop/tiles/placeholder.png'} alt={item.name || 'Item image'} fill sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw" className="rounded-sm" data-ai-hint="item icon"/>
           </div>
           <span className="text-xs sm:text-sm font-rajdhani font-semibold text-cyan-200 leading-tight">{item.name}</span>
         </motion.button>
@@ -558,8 +566,8 @@ const SpecificItemDetailView: React.FC<SpecificItemDetailViewProps> = ({
             <motion.div
               className="relative w-full max-w-xs md:max-w-sm aspect-square bg-slate-800/50 border border-slate-700 rounded-lg shadow-xl overflow-hidden mb-4"
             >
-              {/* Item detail image: Removed layout/objectFit, added fill and responsive sizes */}
-              <NextImage src={itemData.imageSrc || 'https://placehold.co/400x400.png'} alt={itemData.title} fill sizes="(max-width: 768px) 100vw, 50vw" data-ai-hint="item large"/>
+              {/* Item detail image: Removed layout/objectFit, added fill and responsive sizes. Added fallback for alt text. */}
+              <NextImage src={itemData.imageSrc || 'https://placehold.co/400x400.png'} alt={itemData.title || 'Item detail image'} fill sizes="(max-width: 768px) 100vw, 50vw" data-ai-hint="item large"/>
             </motion.div>
 
             <div className="text-center w-full max-w-xs md:max-w-sm">
