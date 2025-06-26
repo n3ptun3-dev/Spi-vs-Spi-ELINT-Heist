@@ -90,18 +90,18 @@ interface CardVisualsProps {
   displayItem: DisplayItem; 
   outputWidth: number; 
   outputHeight: number;
-  preloadedImage: HTMLImageElement | null; // New prop to receive the preloaded image
+  preloadedImage: HTMLImageElement | null;
 }
 
 const CardVisuals: React.FC<CardVisualsProps> = ({ displayItem, outputWidth, outputHeight, preloadedImage }) => {
-    const { colorVar: itemColorCssVar, levelForVisuals, title, quantityInStack } = displayItem; // Keep title for image alt text
+    const { colorVar: itemColorCssVar, levelForVisuals, title, quantityInStack } = displayItem;
 
     const cardBgClass = LEVEL_TO_BG_CLASS[levelForVisuals] || 'bg-muted/30';
     
     return (
         <div 
             className={cn(
-                "w-full h-full flex flex-col relative overflow-hidden", // Changed to flex-col to stack image and title
+                "w-full h-full flex flex-col relative overflow-hidden",
                 "rounded-lg border-2", 
                 cardBgClass 
             )}
@@ -112,15 +112,11 @@ const CardVisuals: React.FC<CardVisualsProps> = ({ displayItem, outputWidth, out
             }}
         >
             {preloadedImage ? (
-                // Image container: takes 70% height, no padding, flex to center image
-                // 'object-contain' on the img ensures it keeps its ratio and fits within this 70% area.
-                // If the image's aspect ratio is wider than the container, it will leave vertical gaps (empty space) on the sides.
-                // If the image's aspect ratio is taller, it will fill the width and leave horizontal gaps (empty space) at top/bottom.
                 <div className="relative w-full h-[70%] flex-shrink-0 flex items-center justify-center"> 
                     <img 
                         src={preloadedImage.src} 
-                        alt={title} // Use title as alt text for accessibility
-                        className="w-full h-full object-contain" // object-contain to keep ratio, fill container, but won't crop
+                        alt={title} 
+                        className="w-full h-full object-contain" 
                     />
                 </div>
             ) : (
@@ -141,7 +137,7 @@ const CardVisuals: React.FC<CardVisualsProps> = ({ displayItem, outputWidth, out
             {/* Quantity Indicator for Stack Cards */}
             {quantityInStack > 1 && (
                 <div 
-                    className="absolute top-1 right-1 bg-black/70 text-white text-base font-bold rounded-full w-8 h-8 flex items-center justify-center border"
+                    className="absolute top-1 right-1 bg-black/70 text-white text-xl font-bold rounded-full w-10 h-10 flex items-center justify-center border pb-[18px]"
                     style={{ borderColor: itemColorCssVar }} // Apply the border color from displayItem
                 >
                     {quantityInStack}

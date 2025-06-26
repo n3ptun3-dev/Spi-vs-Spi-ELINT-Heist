@@ -72,7 +72,6 @@ export default function HomePage() {
 
   // Debug log for isSpyShopOpen
   useEffect(() => {
-    console.log('page.tsx: isSpyShopOpen state changed to:', isSpyShopOpen);
   }, [isSpyShopOpen]);
 
 

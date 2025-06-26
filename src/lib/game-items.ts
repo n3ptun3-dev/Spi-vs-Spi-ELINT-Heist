@@ -1,7 +1,5 @@
 // src/lib/game-items.ts
-// MODIFIED BY GEMINI (v2): Added '0' to ItemLevel type to allow players to start at level 0.
-//                           Introduced a safeguard in generateItemLevels to treat level 0
-//                           as level 1 for item data generation.
+// MODIFIED BY LEXI (v4): Implemented conditional .jpg/.png loading based on specific item types.
 
 // This file defines the data structures and item lists for the Spi vs Spi game.
 // It includes interfaces for various item categories and populated arrays of example items.
@@ -23,10 +21,10 @@ export interface GameItemBase {
   cost: number; // ELINT cost
   scarcity: 'Common' | 'Uncommon' | 'Rare' | 'Very Rare' | 'Super Rare' | 'Scarce';
   category: ItemCategory;
-  imageSrc?: string; // Relative path or URL for item image (for detail view)
-  tileImageSrc?: string; // Relative path or URL for item tile in grid view (can be same as imageSrc or different)
+  imageSrc?: string; // Relative path or URL for item image (for detail view) - now defaults to .jpg
+  tileImageSrc?: string; // Relative path or URL for item tile in grid view (can be same as imageSrc or different) - now defaults to .jpg
   dataAiHint?: string;
-  colorVar: keyof typeof ITEM_LEVEL_COLORS_CSS_VARS; // To link to CSS variable for color
+  colorVar: keyof typeof ITEM_LEVEL_COLORS_CSS_VARS;
   
   // Detailed properties - some are optional and category-specific
   strength?: { current: number, max: number }; // For Hardware, Lock Fortifiers
@@ -189,8 +187,29 @@ function generateItemLevels<K extends GameItemBase>( // K is the specific item t
     
     const cost = levelConfig?.cost ?? 0;
     const scarcity = levelConfig?.scarcity ?? 'Common';
-    let itemImageSrc = commonProps.imageSrc;
-    let itemTileImageSrc = commonProps.tileImageSrc;
+    
+    // Determine the file extension: .jpg for specified hardware, else .png
+    let fileExtension: 'jpg' | 'png' = 'png'; // Default to PNG
+
+    // List of hardware items that should prioritize .jpg
+    const jpgPriorityHardwareItems = [
+      'cypher_lock',
+      'quantum_entanglement_lock',
+      'reinforced_deadbolt',
+      'sonic_pulse_lock',
+    ];
+
+    // Check if the current item is a Hardware item and is in our .jpg priority list
+    if (commonProps.category === 'Hardware' && jpgPriorityHardwareItems.includes(baseId)) {
+      fileExtension = 'jpg';
+    }
+    // For Aesthetic Schemes, images are defined directly in their item objects,
+    // so this conditional logic won't apply to them, they'll use their hardcoded path.
+    // All other categories and hardware items not in jpgPriorityHardwareItems will default to .png.
+
+    let itemImageSrc: string;
+    let itemTileImageSrc: string;
+
     let itemDataAiHint = commonProps.dataAiHint;
     const defaultImage = '/Spi vs Spi icon.png';
     const defaultAiHint = baseName.toLowerCase().split(' ').slice(0, 2).join(' ') || "item icon";
@@ -207,7 +226,7 @@ function generateItemLevels<K extends GameItemBase>( // K is the specific item t
 
     // Use commonProps.category to correctly type `K` if it's `HardwareItem` etc.
     if (commonProps.category === 'Hardware') {
-      itemImageSrc = `/spyshop/items/hardware/${baseId}_l${effectiveLevel}.png`; // Use effectiveLevel for image path
+      itemImageSrc = `/spyshop/items/hardware/${baseId}_l${effectiveLevel}.${fileExtension}`;
       itemTileImageSrc = itemImageSrc;
       itemDataAiHint = itemDataAiHint || `${baseName.toLowerCase().split(' ')[0]} lock`;
       
@@ -219,7 +238,7 @@ function generateItemLevels<K extends GameItemBase>( // K is the specific item t
       maxRechargeInitiations = effectiveLevel; // Use effectiveLevel here too
       perInitiationRechargeCost = Math.round((hardwareMaxStr / 5) * 0.2);
     } else if (commonProps.category === 'Infiltration Gear') {
-      itemImageSrc = `/spyshop/items/infiltration_gear/${baseId}_l${effectiveLevel}.png`; // Use effectiveLevel
+      itemImageSrc = `/spyshop/items/infiltration_gear/${baseId}_l${effectiveLevel}.${fileExtension}`;
       itemTileImageSrc = itemImageSrc;
       itemDataAiHint = itemDataAiHint || `${baseName.toLowerCase().split(' ')[0]} tool`;
       
@@ -232,7 +251,7 @@ function generateItemLevels<K extends GameItemBase>( // K is the specific item t
         currentUses = 1;
       }
     } else if (commonProps.category === 'Lock Fortifiers') {
-        itemImageSrc = `/spyshop/items/lock_fortifiers/${baseId}_l${effectiveLevel}.png`; // Use effectiveLevel
+        itemImageSrc = `/spyshop/items/lock_fortifiers/${baseId}_l${effectiveLevel}.${fileExtension}`;
         itemTileImageSrc = itemImageSrc;
         itemDataAiHint = itemDataAiHint || `${baseName.toLowerCase().split(' ')[0]} fortifier`;
         
@@ -249,7 +268,7 @@ function generateItemLevels<K extends GameItemBase>( // K is the specific item t
           currentCharges = 1;
         }
     } else if (commonProps.category === 'Nexus Upgrades') {
-        itemImageSrc = `/spyshop/items/nexus_upgrades/${baseId}_l${effectiveLevel}.png`; // Use effectiveLevel
+        itemImageSrc = `/spyshop/items/nexus_upgrades/${baseId}_l${effectiveLevel}.${fileExtension}`;
         itemTileImageSrc = itemImageSrc;
         itemDataAiHint = itemDataAiHint || `${baseName.toLowerCase().split(' ')[0]} upgrade`;
         
@@ -270,14 +289,22 @@ function generateItemLevels<K extends GameItemBase>( // K is the specific item t
              itemStrength = { current: nexusCurrentStrength ?? 0, max: nexusMaxStrength };
         }
     } else if (commonProps.category === 'Assault Tech') {
-        itemImageSrc = `/spyshop/items/assault_tech/${baseId}_l${effectiveLevel}.png`; // Use effectiveLevel
+        itemImageSrc = `/spyshop/items/assault_tech/${baseId}_l${effectiveLevel}.${fileExtension}`;
         itemTileImageSrc = itemImageSrc;
         itemDataAiHint = itemDataAiHint || `${baseName.toLowerCase().split(' ')[0]} tech`;
         maxUses = 1;
         currentUses = 1;
+    } else if (commonProps.category === 'Aesthetic Schemes') {
+        // Aesthetic Schemes already set their imageSrc directly within their definitions below
+        // If not, they would fall through to the defaultImage.
+        itemImageSrc = commonProps.imageSrc || defaultImage;
+        itemTileImageSrc = commonProps.tileImageSrc || itemImageSrc;
+    } else {
+        // Fallback for any category not explicitly handled or for commonProps.imageSrc being set
+        itemImageSrc = commonProps.imageSrc || defaultImage;
+        itemTileImageSrc = itemImageSrc;
     }
-      // For Aesthetic Schemes, imageSrc might be set in commonProps or fallback if not.
-      // If not specifically handled by category, ensure there's a fallback.
+      
     return {
       id: `${baseId}_l${level}`, // The ID should still reflect the actual level (0-8)
       name: baseName,
@@ -286,8 +313,8 @@ function generateItemLevels<K extends GameItemBase>( // K is the specific item t
       colorVar: (effectiveLevel % 8) + 1 as keyof typeof ITEM_LEVEL_COLORS_CSS_VARS, // Use effectiveLevel for color
       ...commonProps,
       ...levelConfig,
-      imageSrc: itemImageSrc || defaultImage,
-      tileImageSrc: itemTileImageSrc || itemImageSrc || defaultImage,
+      imageSrc: itemImageSrc, // Use the determined image source
+      tileImageSrc: itemTileImageSrc, // Use the determined tile image source
       dataAiHint: itemDataAiHint || defaultAiHint,
       ...(currentUses !== undefined && { currentUses }),
       ...(maxUses !== undefined && { maxUses }),
@@ -437,7 +464,7 @@ export const INFILTRATION_GEAR_ITEMS: InfiltrationGearItem[] = [
 export const NEXUS_UPGRADE_ITEMS: NexusUpgradeItem[] = [
     ...generateItemLevels<NexusUpgradeItem>(
     'security_camera', 'Security Camera',
-    { category: 'Nexus Upgrades', description: 'Automatically detects an infiltration attempt on the Vault. Upon detection, it alerts with an audible sound, a notification and a Comms message, and provides you with an overview of the attacker: Agent Name, Level, and gadget used. The level of the Security Camera determines the amount of attacks that will create an alert before needing to be recharged. Example: A level 3 camera will alert you three separate infiltrations before it needs recharging.', functionDescription: "Alerts on attack, provides intel.", placement: "Vault-Wide Upgrade slot", durability: "Rechargeable", cooldown: "5 mins", destructionDescription: "Upon reaching the end of its total recharge capacity (initial + 10 recharges) and that capacity being fully depleted, the Security Camera gadget is destroyed and automatically removed from its Vault slot it occupied. Players will receive an in-game notification when a Security Camera is destroyed this way." },
+    { category: 'Nexus Upgrades', description: 'Automatically detects an infiltration attempt on the Vault. Upon detection, it alerts with an audible sound, a notification and a Comms message, and provides you with an overview of the attacker: Agent Name, Level, and gadget used. The level of the Security Camera determines the amount of attacks that will create an alert before needing to be recharged. Example: A level 3 camera will alert you three separate infiltrations before it needs recharging.', functionDescription: "Alerts on attack, provides intel.", placement: "Vault-Wide Upgrade slot", durability: "Rechargeable", cooldown: "5 mins", destructionDescription: "Upon reaching the end of its total recharge capacity (initial + 10 recharges) and that capacity being fully depleted, the Security Camera gadget is destroyed and automatically removed from its Vault slot it occupied. Players will receive in-game notification when a Security Camera is destroyed this way." },
     ITEM_LEVELS.map(l => ({ cost: calculateScaledValue(l, 800, 6400), rechargeCost: calculateScaledValue(l, 50, 400), rechargeCapacity: `${l*10} alerts`, scarcity: 'Scarce' })) // current/max alerts are set in generateItemLevels with specific logic
   ),
   ...generateItemLevels<NexusUpgradeItem>(
@@ -447,12 +474,12 @@ export const NEXUS_UPGRADE_ITEMS: NexusUpgradeItem[] = [
   ),
   ...generateItemLevels<NexusUpgradeItem>(
     'ers', 'Emergency Repair System (ERS)',
-    { category: 'Nexus Upgrades', description: 'A crucial defensive gadget that enhances the durability of your Vault\\\'s Locks during an infiltration attempt. It acts as a reserve pool of strength that your Locks can draw upon before their own structural integrity is compromised.', functionDescription: "Provides a reserve of strength exclusively for Locks installed on the Vault. This reserve is depleted before the Lock's own strength is affected when taking damage. It takes effect automatically and immediately upon a Lock receiving damage. The ERS does not affect Lock Fortifiers or other items. An ERS’s strength is shared between the installed locks. ERS gadgets range from Level 1 (100 strength) through to Level 8 (800 strength). When an ERS is active, its effective strength is made available to the Locks on the vault. For instance, a single L1 Lock protected by an L8 ERS effectively has the strength of a L8 Lock plus its own L1 base strength, as the ERS reserve is used first.", placement: "Vault-Wide Upgrade slot", durability: "Rechargeable", cooldown: "1 hour", destructionDescription: "Upon reaching the end of its total recharge capacity (initial + 3 recharges) and that capacity being fully depleted, the Security Camera gadget is destroyed and automatically removed from its Vault slot it occupied. Players will receive an in-game notification when an ERS is destroyed this way.", minigameEffect: 'Reduces the target\\\'s Lock Strength by an amount equal to its level. This reduction in Lock Strength then decreases the number of \\\'Required Successful Entries\\\' needed to bypass the target.' },
+    { category: 'Nexus Upgrades', description: 'A crucial defensive gadget that enhances the durability of your Vault\\\'s Locks during an infiltration attempt. It acts as a reserve pool of strength that your Locks can draw upon before their own structural integrity is compromised.', functionDescription: "Provides a reserve of strength exclusively for Locks installed on the Vault. This reserve is depleted before the Lock's own strength is affected when taking damage. It takes effect automatically and immediately upon a Lock receiving damage. The ERS does not affect Lock Fortifiers or other items. An ERS’s strength is shared between the installed locks. ERS gadgets range from Level 1 (100 strength) through to Level 8 (800 strength). When an ERS is active, its effective strength is made available to the Locks on the vault. For instance, a single L1 Lock protected by an L8 ERS effectively has the strength of a L8 Lock plus its own L1 base strength, as the ERS reserve is used first.", placement: "Vault-Wide Upgrade slot", durability: "Rechargeable", cooldown: "1 hour", destructionDescription: "Upon reaching the end of its total recharge capacity (initial + 3 recharges) and that capacity being fully depleted, the Security Camera gadget is destroyed and automatically removed from its Vault slot it occupied. Players will receive in-game notification when an ERS is destroyed this way.", minigameEffect: 'Reduces the target\\\'s Lock Strength by an amount equal to its level. This reduction in Lock Strength then decreases the number of \\\'Required Successful Entries\\\' needed to bypass the target.' },
     ITEM_LEVELS.map(l => ({ cost: calculateScaledValue(l, 1000, 8000), rechargeCost: calculateScaledValue(l, 75, 600), rechargeCapacity: `${l*100} strength points`, scarcity: 'Rare' })) // current/max strength are set in generateItemLevels with specific logic
   ),
     ...generateItemLevels<NexusUpgradeItem>(
     'epc', 'Emergency Power Cell (EPC)',
-    { category: 'Nexus Upgrades', description: 'A single-use defensive gadget designed to provide an immediate boost to your Vault\\\'s defenses when under infiltration. It\\\'s a quick shot of energy to help weather an unexpected assault.', functionDescription: "The Emergency Power Cell provides a defensive effect when an attacker is engaged in an infiltration. It increases the difficulty of the lock’s Key Cracker.", placement: "Vault-Wide Upgrade slot", durability: "One-Time Use", destructionDescription: "This gadget is consumed when its strength reaches zero. The Power Cell has a 'strength' equal to its level (an L1 EPC has 1 strength, an L8 EPC has 8 strength). Once the EPC's strength is depleted to 0, the Emergency Power Cell is destroyed and automatically removed from its Vault slot. Players will receive an in-game notification when an EPC is destroyed this way.", minigameEffect: 'When the EPC is active, it increases the difficulty of the Key Cracker by adding 3 extra digits to the code sequence the attacker must remember. Each time the attacker successfully enters a code sequence while the EPC is active, the EPC\\\'s strength is reduced by 1.', currentStrength: 1, maxStrength: 1 },
+    { category: 'Nexus Upgrades', description: 'A single-use defensive gadget designed to provide an immediate boost to your Vault\\\'s defenses when under infiltration. It\\\'s a quick shot of energy to help weather an unexpected assault.', functionDescription: "The Emergency Power Cell provides a defensive effect when an attacker is engaged in an infiltration. It increases the difficulty of the lock’s Key Cracker.", placement: "Vault-Wide Upgrade slot", durability: "One-Time Use", destructionDescription: "This gadget is consumed when its strength reaches zero. The Power Cell has a 'strength' equal to its level (an L1 EPC has 1 strength, an L8 EPC has 8 strength). Once the EPC's strength is depleted to 0, the Emergency Power Cell is destroyed and automatically removed from its Vault slot. Players will receive in-game notification when an EPC is destroyed this way.", minigameEffect: 'When the EPC is active, it increases the difficulty of the Key Cracker by adding 3 extra digits to the code sequence the attacker must remember. Each time the attacker successfully enters a code sequence while the EPC is active, the EPC\\\'s strength is reduced by 1.', currentStrength: 1, maxStrength: 1 },
     ITEM_LEVELS.map(l => ({ cost: calculateScaledValue(l, 1200, 9600), repurchaseCost: calculateScaledValue(l, 800, 6400), scarcity: 'Super Rare' })) // current/max strength are set in generateItemLevels with specific logic
   ),
 ];
