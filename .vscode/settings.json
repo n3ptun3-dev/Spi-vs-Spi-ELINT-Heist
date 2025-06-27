@@ -1,4 +1,15 @@
 {
     "IDX.aI.enableInlineCompletion": true,
-    "IDX.aI.enableCodebaseIndexing": true
-}
+    "IDX.aI.enableCodebaseIndexing": true,
+    "tailwindcss-intellisense.trace.server": "verbose",
+    "tailwindCSS.experimental.classRegex": [
+      "tw`(.*?)`",
+      "twcl`(.*?)`",
+      ["className", "\"([^\"]*)\""],
+      ["class", "\"([^\"]*)\""],
+      ["/\\*?tailwind\\*?/\\s*`([^`]*)`", "`([^`]*)`"]
+    ],
+    "css.lint.unknownAtRules": "ignore",
+    "less.lint.unknownAtRules": "ignore",
+    "scss.lint.unknownAtRules": "ignore"
+  }

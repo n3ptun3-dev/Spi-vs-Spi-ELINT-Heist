@@ -260,7 +260,7 @@ const EquipmentCarousel: React.FC<{
                     if (obj?.userData?.isCarouselItem) {
                         onItemClick(obj.userData.displayItem);
                         clickedItem = true;
-                        c// onsole.log('endInteraction: Clicked a carousel item. Item ID:', obj.userData.id);
+                        // console.log('endInteraction: Clicked a carousel item. Item ID:', obj.userData.id);
                     }
                 }
                 // For a click, resume auto-rotate immediately.
@@ -288,7 +288,7 @@ const EquipmentCarousel: React.FC<{
             if (interactionState.autoRotateTimeout) clearTimeout(interactionState.autoRotateTimeout);
             interactionState.autoRotateTimeout = setTimeout(() => {
                 autoRotateRef.current = true;
-                c// onsole.log('resumeAutoRotate: Auto-rotate re-enabled via timeout.');
+            // console.log('resumeAutoRotate: Auto-rotate re-enabled via timeout.');
             }, AUTO_ROTATE_RESUME_DELAY);
         };
         

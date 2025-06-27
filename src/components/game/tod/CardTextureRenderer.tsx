@@ -179,7 +179,7 @@ const CardTextureRenderer: React.FC<CardTextureRendererProps> = ({ displayItem, 
             img.src = src;
             img.onload = () => {
                 if (isMounted) {
-                    console.log(`CardTextureRenderer (${displayItem.title}): Preloaded image success: ${src}`);
+                    // console.log(`CardTextureRenderer (${displayItem.title}): Preloaded image success: ${src}`);
                     setPreloadedImage(img);
                 }
             };
@@ -187,7 +187,7 @@ const CardTextureRenderer: React.FC<CardTextureRendererProps> = ({ displayItem, 
                 if (isMounted) {
                     console.error(`CardTextureRenderer (${displayItem.title}): Failed to preload image: ${src}.`);
                     if (src !== `${window.location.origin}${FALLBACK_IMAGE_SRC}`) {
-                        console.log(`CardTextureRenderer (${displayItem.title}): Attempting fallback image: ${FALLBACK_IMAGE_SRC}`);
+                        // console.log(`CardTextureRenderer (${displayItem.title}): Attempting fallback image: ${FALLBACK_IMAGE_SRC}`);
                         loadAndSetImage(`${window.location.origin}${FALLBACK_IMAGE_SRC}`);
                     } else {
                         console.error(`CardTextureRenderer (${displayItem.title}): Fallback image also failed to load.`);
@@ -224,7 +224,7 @@ const CardTextureRenderer: React.FC<CardTextureRendererProps> = ({ displayItem, 
             tempDivRef.current.style.backgroundColor = 'transparent'; 
             document.body.appendChild(tempDivRef.current);
             reactRootRef.current = ReactDOM.createRoot(tempDivRef.current);
-            console.log(`CardTextureRenderer (${displayItem.title}): Temp div and root created.`);
+            // console.log(`CardTextureRenderer (${displayItem.title}): Temp div and root created.`);
         }
 
         const captureCard = async () => {
@@ -244,7 +244,7 @@ const CardTextureRenderer: React.FC<CardTextureRendererProps> = ({ displayItem, 
                 </React.StrictMode>
             );
 
-            console.log(`CardTextureRenderer (${displayItem.title}): Capturing CardVisuals with html2canvas (IMAGE NOW IN DOM).`);
+            // console.log(`CardTextureRenderer (${displayItem.title}): Capturing CardVisuals with html2canvas (IMAGE NOW IN DOM).`);
             reactRootRef.current.render(cardElement);
 
             // Give React a moment to render and for the image in the DOM to be ready
@@ -261,7 +261,7 @@ const CardTextureRenderer: React.FC<CardTextureRendererProps> = ({ displayItem, 
                 // IMPORTANT: Manual ctx.drawImage() is REMOVED.
                 // html2canvas should now capture the <img> tag directly.
 
-                console.log(`CardTextureRenderer (${displayItem.title}): Calling onRendered callback.`);
+                // console.log(`CardTextureRenderer (${displayItem.title}): Calling onRendered callback.`);
                 onRendered(canvas);
 
             } catch (error) {
@@ -284,13 +284,13 @@ const CardTextureRenderer: React.FC<CardTextureRendererProps> = ({ displayItem, 
         if (preloadedImage) {
             captureCard();
         } else {
-            console.log(`CardTextureRenderer (${displayItem.title}): Waiting for image to preload...`);
+            // console.log(`CardTextureRenderer (${displayItem.title}): Waiting for image to preload...`);
         }
 
 
         // Cleanup function for useEffect
         return () => {
-            console.log(`CardTextureRenderer (${displayItem.title}): Cleanup on unmount.`);
+            // console.log(`CardTextureRenderer (${displayItem.title}): Cleanup on unmount.`);
             if (reactRootRef.current) {
                 reactRootRef.current.unmount();
                 reactRootRef.current = null;
