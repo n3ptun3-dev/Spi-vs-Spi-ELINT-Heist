@@ -73,7 +73,7 @@ export interface GameMessage {
 }
 
 const DEFAULT_PLAYER_STATS_FOR_NEW_PLAYER: PlayerStats = {
-  xp: 0, level: 1 as ItemLevel, elintReserves: 0, elintTransferred: 0,
+  xp: 0, level: 0 as ItemLevel, elintReserves: 0, elintTransferred: 0,
   successfulVaultInfiltrations: 0, successfulLockInfiltrations: 0,
   elintObtainedTotal: 0, elintObtainedCycle: 0, elintLostTotal: 0, elintLostCycle: 0,
   elintGeneratedTotal: 0, elintGeneratedCycle: 0, elintTransferredToHQCyle: 0,

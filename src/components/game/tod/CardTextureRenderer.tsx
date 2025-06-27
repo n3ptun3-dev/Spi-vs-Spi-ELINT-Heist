@@ -188,7 +188,7 @@ const CardVisuals: React.FC<CardVisualsProps> = ({ displayItem, outputWidth, out
             {/* Quantity Indicator for Stack Cards */}
             {quantityInStack > 1 && (
                 <div 
-                    className="absolute top-1 right-1 bg-black/70 text-white text-xl font-bold rounded-full w-10 h-10 flex items-center justify-center border pb-[18px]"
+                    className="absolute top-1 right-1 bg-black/70 text-white text-xl font-bold rounded-full w-[50px] h-10 flex items-center justify-center border pb-[18px]"
                     style={{ borderColor: itemColorCssVar }}
                 >
                     {quantityInStack}

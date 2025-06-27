@@ -94,7 +94,7 @@ export function FingerprintScannerScreen() {
             {/* Top content block for "Access Granted" */}
             <div className="flex-shrink-0"> 
               <h2 className="text-3xl font-orbitron holographic-text text-green-400">Access Granted</h2>
-              <p className="text-lg text-muted-foreground mt-2">Welcome Agent {playerSpyName}.<br />Loading TOD...</p>
+              <p className="text-lg text-muted-foreground mt-2">Welcome<br></br>Agent {playerSpyName}</p>
             </div>
             <div className="flex-grow" /> {/* Spacer */}
             {/* Bottom graphic block for "Access Granted" - matches scanning state structure */}

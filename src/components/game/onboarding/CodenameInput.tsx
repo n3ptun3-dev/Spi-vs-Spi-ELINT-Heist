@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 
 interface CodenameInputProps {
-  explicitTheme?: Theme; // This will be passed by AppContext/HomePage
+  explicitTheme?: Theme;
 }
 
 export function CodenameInput({ explicitTheme }: CodenameInputProps) {
@@ -30,7 +30,6 @@ export function CodenameInput({ explicitTheme }: CodenameInputProps) {
     if (faction === 'Observer') {
       toast({ title: "Observation Protocol", description: "Observers do not set codenames. System engaging.", variant: "default" });
       closeTODWindow();
-      // No need to setOnboardingStep here, AppContext.handleAuthentication should have set it to 'tod' for Observers
     }
   }, [faction, closeTODWindow, toast]);
 
@@ -82,7 +81,7 @@ export function CodenameInput({ explicitTheme }: CodenameInputProps) {
       {error && <p className="text-xs text-destructive text-center pt-1">{error}</p>}
       
       <p className="text-muted-foreground text-center text-xs leading-relaxed mt-1 mb-3 holographic-text px-2">
-        Choose wisely; altering it later may have... consequences.
+        Choose wisely; changing it later might have consequences.
       </p>
 
       <HolographicButton

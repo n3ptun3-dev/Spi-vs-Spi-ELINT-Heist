@@ -53,17 +53,6 @@ export function WelcomeScreen() {
       <h1 className="text-3xl md:text-4xl font-orbitron mb-2 text-center holographic-text flex-shrink-0">
         Welcome to <br />Spi vs Spi
       </h1>
-      <h2 className="text-xl font-orbitron mb-3 text-center holographic-text text-primary flex-shrink-0">
-        Mission Briefing:
-      </h2>
-      <ScrollArea className="flex-grow min-h-0 mb-6">
-        <div className="space-y-3 text-muted-foreground font-rajdhani pr-2">
-          <p>The Pi Network is now the backbone of a global, decentralized digital identity system.</p>
-          <p>Within this system, two clandestine factions have formed: <span className="font-semibold text-blue-400">The Cyphers</span> and <span className="font-semibold text-red-400">The Shadows</span>. You must join one of these factions.</p>
-          <p><span className="font-bold text-foreground">Your primary objective is to steal ELINT (electronic intelligence) from rival spies while protecting your own, and to transfer ELINT to your faction's HQ.</span></p>
-          <p>The faction with the most ELINT at the end of a game cycle wins and could potentially earn a Pi pay out based on Pi ad network revenue.</p>
-        </div>
-      </ScrollArea>
       
       <HolographicButton
         id="authenticate-button"
