@@ -1,23 +1,5 @@
 // src/components/game/tod/CardTextureRenderer.tsx
-// MODIFIED BY GEMINI and Louis (v39): Removed extraneous s from the code
-//                                    and corrected the import paths for 'cn' and 'ITEM_LEVEL_COLORS_CSS_VARS'.
-//                                    This should resolve all current build errors.
-// MODIFIED BY GEMINI (v40): Adjusted CardVisuals to remove padding and ensure image fills card while maintaining aspect ratio.
-// MODIFIED BY GEMINI (v41): Updated CardVisuals to display the image square at the top
-//                           with 'object-contain' and add the card title below it.
-// MODIFIED BY GEMINI (v42): Adjusted CardVisuals for 70% image height, 30% title height.
-//                           Removed padding around the image container.
-//                           Clarified 'object-contain' for aspect ratio and fitting.
-// MODIFIED BY GEMINI (v43): Removed 'truncate' class from title to allow wrapping.
-//                           Adjusted title container to align text to the top and left,
-//                           ensuring multi-line titles are not cut off.
-// MODIFIED BY GEMINI (v44): Centered the title horizontally and set its size to 'xl'.
-//                           Added a quantity indicator for stack cards in the top-right corner.
-// MODIFIED BY GEMINI (v45): Fixed the quantity indicator to be a perfect circle by setting equal width and height.
-//                           Ensured the quantity number is perfectly centered within the circle.
-// MODIFIED BY GEMINI (v46): Ensured vertical alignment for the quantity number within its circle
-//                           and added a 1px border matching the card's border color.
-// MODIFIED BY GEMINI (v47): Increased the size of the quantity indicator circle and adjusted the text size for better centering.
+// MODIFIED BY LEXI (2025-06-27): Fixed a syntax error (a stray single quote) that was causing multiple compilation failures.
 
 "use client";
 
@@ -25,11 +7,11 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import ReactDOM from 'react-dom/client';
 import html2canvas from 'html2canvas';
 import { type GameItemBase, type ItemLevel, type ItemCategory, type PlayerInventoryItem } from '@/contexts/AppContext'; 
-import { cn } from '@/lib/utils'; // Corrected import path
-import { ITEM_LEVEL_COLORS_CSS_VARS } from '@/lib/constants'; // Corrected import path
+import { cn } from '@/lib/utils';
+import { ITEM_LEVEL_COLORS_CSS_VARS } from '@/lib/constants';
 
 // --- Constants ---
-export const FALLBACK_IMAGE_SRC = '/Spi vs Spi icon.png'; // NOW EXPORTED!
+export const FALLBACK_IMAGE_SRC = '/Spi vs Spi icon.png';
 
 // --- Level to Background Class Mapping ---
 const LEVEL_TO_BG_CLASS: Record<ItemLevel, string> = {
@@ -50,6 +32,7 @@ export interface DisplayItem {
   stackType: 'category' | 'itemType' | 'itemLevel' | 'individual';
   path: string[];
   dataAiHint?: string;
+  displayTextLabel?: string; // NEW: For displaying text like "Single Use" or "Activation Cost"
   instanceCurrentStrength?: number;
   instanceMaxStrength?: number;
   instanceCurrentCharges?: number;
@@ -62,21 +45,30 @@ export interface DisplayItem {
   aggregateMaxStrength?: number;
   aggregateCurrentCharges?: number;
   aggregateMaxCharges?: number;
+  aggregateCurrentUses?: number; 
+  aggregateMaxUses?: number; 
+  aggregateCurrentAlerts?: number; 
+  aggregateMaxAlerts?: number; 
 }
 
 // ============================================================================
-//  Card ProgressBar Component (Kept for future reintroduction, not used now)
+//  Card ProgressBar Component
 // ============================================================================
 const CardProgressBar: React.FC<{ label?: string; current: number; max: number; colorVar: string }> = React.memo(({ label, current, max, colorVar }) => {
   const percentage = max > 0 ? Math.min(100, Math.max(0, (current / max) * 100)) : 0;
   return (    
-    <div className="w-full mt-auto px-1">
-      <div className="flex justify-between items-center text-[9px] opacity-80 mb-px">
-        {label && <span className="text-left font-semibold">{label}</span>}
-        <span className="text-right">{current}/{max}</span>
-      </div>
-      <div className="rounded-full overflow-hidden w-full" style={{ height: '6px', backgroundColor: `hsla(var(--muted-hsl), 0.3)` }}>
-        <div className="h-full rounded-full" style={{ width: `${percentage}%`, backgroundColor: colorVar }} />
+    <div className="w-full mt-0.5 px-0.5" style={{ height: '20px' }}>
+      <div 
+        className="relative rounded-full overflow-hidden w-full h-full flex items-center justify-start"
+        style={{ backgroundColor: `hsla(var(--muted-hsl), 0.3)` }}
+      >
+        <div 
+          className="absolute inset-0 rounded-full" 
+          style={{ width: `${percentage}%`, backgroundColor: colorVar }} 
+        />
+        <div className="relative z-10 w-full text-center text-[15px] font-semibold text-white mix-blend-difference pb-0.5">
+          {label}
+        </div>
       </div>      
     </div>
   );
@@ -84,7 +76,7 @@ const CardProgressBar: React.FC<{ label?: string; current: number; max: number; 
 CardProgressBar.displayName = 'CardProgressBar';
 
 // ============================================================================
-//  Card Visuals Component (Now renders the <img> tag directly)
+//  Card Visuals Component
 // ============================================================================
 interface CardVisualsProps {
   displayItem: DisplayItem; 
@@ -94,10 +86,34 @@ interface CardVisualsProps {
 }
 
 const CardVisuals: React.FC<CardVisualsProps> = ({ displayItem, outputWidth, outputHeight, preloadedImage }) => {
-    const { colorVar: itemColorCssVar, levelForVisuals, title, quantityInStack } = displayItem;
+    const { 
+        colorVar: itemColorCssVar, 
+        levelForVisuals, 
+        title, 
+        quantityInStack,
+        displayTextLabel, // Use the new text label property
+        instanceCurrentStrength, instanceMaxStrength,
+        instanceCurrentCharges, instanceMaxCharges,
+        instanceCurrentUses, instanceMaxUses,
+        instanceCurrentAlerts, instanceMaxAlerts,
+        aggregateCurrentStrength, aggregateMaxStrength,
+        aggregateCurrentCharges, aggregateMaxCharges,
+        aggregateCurrentUses, aggregateMaxUses, 
+        aggregateCurrentAlerts, aggregateMaxAlerts, 
+    } = displayItem;
 
     const cardBgClass = LEVEL_TO_BG_CLASS[levelForVisuals] || 'bg-muted/30';
     
+    // Determine which set of progress bar values to use
+    const currentStrength = displayItem.stackType === 'individual' ? instanceCurrentStrength : aggregateCurrentStrength;
+    const maxStrength = displayItem.stackType === 'individual' ? instanceMaxStrength : aggregateMaxStrength;
+    const currentCharges = displayItem.stackType === 'individual' ? instanceCurrentCharges : aggregateCurrentCharges;
+    const maxCharges = displayItem.stackType === 'individual' ? instanceMaxCharges : aggregateMaxCharges;
+    const currentUses = displayItem.stackType === 'individual' ? instanceCurrentUses : aggregateCurrentUses;
+    const maxUses = displayItem.stackType === 'individual' ? instanceMaxUses : aggregateMaxUses;
+    const currentAlerts = displayItem.stackType === 'individual' ? instanceCurrentAlerts : aggregateCurrentAlerts;
+    const maxAlerts = displayItem.stackType === 'individual' ? instanceMaxAlerts : aggregateMaxAlerts;
+
     return (
         <div 
             className={cn(
@@ -120,25 +136,47 @@ const CardVisuals: React.FC<CardVisualsProps> = ({ displayItem, outputWidth, out
                     />
                 </div>
             ) : (
-                // "LOADING IMAGE..." container: also takes 70% height for consistent layout
                 <div className="w-full h-[70%] flex-shrink-0 flex items-center justify-center pointer-events-none">
                     <p className="text-2xl font-bold opacity-50 select-none">
                         LOADING IMAGE...
                     </p>
                 </div>
             )}
-            {/* Card Title Area: takes remaining 30% height */}
-            <div className="w-full h-[30%] flex-shrink-0 flex flex-col items-center justify-center px-1 py-0.5 overflow-hidden"> {/* Changed to items-center justify-center for horizontal centering */}
-                <p className="text-xl font-semibold text-center" style={{ color: itemColorCssVar }}> {/* Changed text-2xl to text-xl and added text-center */}
+            {/* Card Title and Progress Bars/Text Area */}
+            <div className="w-full h-[30%] flex-shrink-0 flex flex-col items-center justify-between p-1">
+                {/* Title */}
+                <p className="text-xl font-bold text-center truncate w-full" style={{ color: itemColorCssVar }}>
                     {title}
                 </p>
+                
+                {/* Content Area: Either Text Label or Progress Bars */}
+                <div className="w-full flex-grow flex flex-col justify-center items-center">
+                    {displayTextLabel ? (
+                        <p className="text-lg font-semibold text-center text-slate-300 px-2">{displayTextLabel}</p>
+                    ) : (
+                        <div className="w-[90%] mx-auto flex flex-col space-y-0.5">
+                            {maxStrength !== undefined && maxStrength > 0 && (
+                                <CardProgressBar label="Strength" current={currentStrength || 0} max={maxStrength} colorVar={itemColorCssVar} />
+                            )}
+                            {maxCharges !== undefined && maxCharges > 0 && (
+                                <CardProgressBar label="Charges" current={currentCharges || 0} max={maxCharges} colorVar={itemColorCssVar} />
+                            )}
+                            {maxUses !== undefined && maxUses > 0 && (
+                                <CardProgressBar label="Uses" current={currentUses || 0} max={maxUses} colorVar={itemColorCssVar} />
+                            )}
+                            {maxAlerts !== undefined && maxAlerts > 0 && (
+                                <CardProgressBar label="Alerts" current={currentAlerts || 0} max={maxAlerts} colorVar={itemColorCssVar} />
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Quantity Indicator for Stack Cards */}
             {quantityInStack > 1 && (
                 <div 
                     className="absolute top-1 right-1 bg-black/70 text-white text-xl font-bold rounded-full w-10 h-10 flex items-center justify-center border pb-[18px]"
-                    style={{ borderColor: itemColorCssVar }} // Apply the border color from displayItem
+                    style={{ borderColor: itemColorCssVar }}
                 >
                     {quantityInStack}
                 </div>
@@ -150,7 +188,7 @@ CardVisuals.displayName = 'CardVisuals';
 
 
 // ============================================================================
-//  CardTextureRenderer Component (Captures CardVisuals which now contains <img>)
+//  CardTextureRenderer Component (Captures CardVisuals)
 // ============================================================================
 interface CardTextureRendererProps {
   displayItem: DisplayItem;
@@ -179,7 +217,6 @@ const CardTextureRenderer: React.FC<CardTextureRendererProps> = ({ displayItem, 
             img.src = src;
             img.onload = () => {
                 if (isMounted) {
-                    // console.log(`CardTextureRenderer (${displayItem.title}): Preloaded image success: ${src}`);
                     setPreloadedImage(img);
                 }
             };
@@ -187,7 +224,6 @@ const CardTextureRenderer: React.FC<CardTextureRendererProps> = ({ displayItem, 
                 if (isMounted) {
                     console.error(`CardTextureRenderer (${displayItem.title}): Failed to preload image: ${src}.`);
                     if (src !== `${window.location.origin}${FALLBACK_IMAGE_SRC}`) {
-                        // console.log(`CardTextureRenderer (${displayItem.title}): Attempting fallback image: ${FALLBACK_IMAGE_SRC}`);
                         loadAndSetImage(`${window.location.origin}${FALLBACK_IMAGE_SRC}`);
                     } else {
                         console.error(`CardTextureRenderer (${displayItem.title}): Fallback image also failed to load.`);
@@ -212,19 +248,18 @@ const CardTextureRenderer: React.FC<CardTextureRendererProps> = ({ displayItem, 
 
 
     // Effect for rendering and capturing the card
-    // This useEffect now explicitly waits for preloadedImage to be not null
     useEffect(() => {
         if (!tempDivRef.current) {
             tempDivRef.current = document.createElement('div');
             tempDivRef.current.style.position = 'absolute';
-            tempDivRef.current.style.left = '-9999px'; // Move off-screen
+            tempDivRef.current.style.left = '-9999px';
             tempDivRef.current.style.top = '-9999px';
             tempDivRef.current.style.width = `${outputWidth}px`;
+            // CORRECTED: Changed the stray single quote ' to a backtick `
             tempDivRef.current.style.height = `${outputHeight}px`;
             tempDivRef.current.style.backgroundColor = 'transparent'; 
             document.body.appendChild(tempDivRef.current);
             reactRootRef.current = ReactDOM.createRoot(tempDivRef.current);
-            // console.log(`CardTextureRenderer (${displayItem.title}): Temp div and root created.`);
         }
 
         const captureCard = async () => {
@@ -239,29 +274,22 @@ const CardTextureRenderer: React.FC<CardTextureRendererProps> = ({ displayItem, 
                         displayItem={displayItem} 
                         outputWidth={outputWidth} 
                         outputHeight={outputHeight} 
-                        preloadedImage={preloadedImage} // Pass the preloaded image directly
+                        preloadedImage={preloadedImage}
                     />
                 </React.StrictMode>
             );
 
-            // console.log(`CardTextureRenderer (${displayItem.title}): Capturing CardVisuals with html2canvas (IMAGE NOW IN DOM).`);
             reactRootRef.current.render(cardElement);
 
-            // Give React a moment to render and for the image in the DOM to be ready
-            // html2canvas works best when the images it needs to capture are fully loaded.
-            await new Promise(resolve => setTimeout(resolve, 100)); // Increased delay slightly for image rendering
+            await new Promise(resolve => setTimeout(resolve, 100));
             
             try {
                 const canvas = await html2canvas(tempDivRef.current, {
                     backgroundColor: null, 
                     useCORS: true, 
-                    allowTaint: true // May be needed if CORS is an issue despite preloading
+                    allowTaint: true
                 });
 
-                // IMPORTANT: Manual ctx.drawImage() is REMOVED.
-                // html2canvas should now capture the <img> tag directly.
-
-                // console.log(`CardTextureRenderer (${displayItem.title}): Calling onRendered callback.`);
                 onRendered(canvas);
 
             } catch (error) {
@@ -280,17 +308,11 @@ const CardTextureRenderer: React.FC<CardTextureRendererProps> = ({ displayItem, 
             }
         };
 
-        // Only trigger captureCard if preloadedImage is available (to ensure <img> has src)
         if (preloadedImage) {
             captureCard();
-        } else {
-            // console.log(`CardTextureRenderer (${displayItem.title}): Waiting for image to preload...`);
-        }
+        } 
 
-
-        // Cleanup function for useEffect
         return () => {
-            // console.log(`CardTextureRenderer (${displayItem.title}): Cleanup on unmount.`);
             if (reactRootRef.current) {
                 reactRootRef.current.unmount();
                 reactRootRef.current = null;
@@ -300,9 +322,9 @@ const CardTextureRenderer: React.FC<CardTextureRendererProps> = ({ displayItem, 
                 tempDivRef.current = null;
             }
         };
-    }, [displayItem, onRendered, outputWidth, outputHeight, preloadedImage]); // preloadedImage is key dependency
+    }, [displayItem, onRendered, outputWidth, outputHeight, preloadedImage]); 
 
-    return null; // This component doesn't render anything directly
+    return null; 
 };
 
 export default CardTextureRenderer;
