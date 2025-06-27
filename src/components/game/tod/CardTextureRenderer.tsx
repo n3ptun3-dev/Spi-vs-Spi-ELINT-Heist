@@ -114,6 +114,9 @@ const CardVisuals: React.FC<CardVisualsProps> = ({ displayItem, outputWidth, out
     const currentAlerts = displayItem.stackType === 'individual' ? instanceCurrentAlerts : aggregateCurrentAlerts;
     const maxAlerts = displayItem.stackType === 'individual' ? instanceMaxAlerts : aggregateMaxAlerts;
 
+    // Calculate the height for the progress/text area (10% of total card height)
+    const progressBarAreaHeight = outputHeight * 0.10; // 10% of the total outputHeight
+
     return (
         <div 
             className={cn(
@@ -128,7 +131,7 @@ const CardVisuals: React.FC<CardVisualsProps> = ({ displayItem, outputWidth, out
             }}
         >
             {preloadedImage ? (
-                <div className="relative w-full h-[70%] flex-shrink-0 flex items-center justify-center"> 
+                <div className="relative w-full flex-shrink-0 flex items-center justify-center" style={{ height: `${outputHeight * 0.70}px` }}> 
                     <img 
                         src={preloadedImage.src} 
                         alt={title} 
@@ -136,21 +139,31 @@ const CardVisuals: React.FC<CardVisualsProps> = ({ displayItem, outputWidth, out
                     />
                 </div>
             ) : (
-                <div className="w-full h-[70%] flex-shrink-0 flex items-center justify-center pointer-events-none">
+                <div className="w-full flex-shrink-0 flex items-center justify-center pointer-events-none" style={{ height: `${outputHeight * 0.70}px` }}>
                     <p className="text-2xl font-bold opacity-50 select-none">
                         LOADING IMAGE...
                     </p>
                 </div>
             )}
+            
             {/* Card Title and Progress Bars/Text Area */}
-            <div className="w-full h-[30%] flex-shrink-0 flex flex-col items-center justify-start space-y-1">
+            <div 
+                className="w-full flex-grow flex flex-col justify-between items-center" // Use flex-grow here to take remaining space
+                style={{ height: `${outputHeight * 0.30}px` }} // This div now explicitly takes the remaining 30%
+            >
                 {/* Title */}
-                <p className="text-2xl font-bold text-center truncate w-full" style={{ color: itemColorCssVar }}>
+                <p 
+                    className="text-2xl font-bold text-center w-full px-1 pt-1 break-words overflow-hidden" // Remove truncate, add break-words and padding
+                    style={{ color: itemColorCssVar, flexGrow: 1 }} // Let title grow to fill space
+                >
                     {title}
                 </p>
                 
                 {/* Content Area: Either Text Label or Progress Bars */}
-                <div className="w-full flex-grow flex flex-col justify-center items-center">
+                <div 
+                    className="w-full flex-shrink-0 flex flex-col justify-center items-center pb-5" // Use flex-shrink-0 to fix its size
+                    style={{ height: `${progressBarAreaHeight}px` }} // Fixed height for this section
+                >
                     {displayTextLabel ? (
                         <p className="text-lg font-semibold text-left text-slate-300 px-2">{displayTextLabel}</p>
                     ) : (
