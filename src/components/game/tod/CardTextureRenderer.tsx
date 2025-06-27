@@ -1,5 +1,6 @@
 // src/components/game/tod/CardTextureRenderer.tsx
-// MODIFIED BY LEXI (2025-06-27): Fixed a syntax error (a stray single quote) that was causing multiple compilation failures.
+// MODIFIED BY LEXI (2025-06-27): Adjusted card layout to prevent title text from being cut off
+//                                and increased title font size for better readability.
 
 "use client";
 
@@ -20,7 +21,7 @@ const LEVEL_TO_BG_CLASS: Record<ItemLevel, string> = {
   0: ''
 };
 
-// --- DisplayItem Interface (Keep this in sync with AppContext or a shared types file if possible) ---
+// --- DisplayItem Interface ---
 export interface DisplayItem {
   id: string; 
   baseItem: GameItemBase | null; 
@@ -32,7 +33,7 @@ export interface DisplayItem {
   stackType: 'category' | 'itemType' | 'itemLevel' | 'individual';
   path: string[];
   dataAiHint?: string;
-  displayTextLabel?: string; // NEW: For displaying text like "Single Use" or "Activation Cost"
+  displayTextLabel?: string;
   instanceCurrentStrength?: number;
   instanceMaxStrength?: number;
   instanceCurrentCharges?: number;
@@ -57,7 +58,7 @@ export interface DisplayItem {
 const CardProgressBar: React.FC<{ label?: string; current: number; max: number; colorVar: string }> = React.memo(({ label, current, max, colorVar }) => {
   const percentage = max > 0 ? Math.min(100, Math.max(0, (current / max) * 100)) : 0;
   return (    
-    <div className="w-full mt-0.5 px-0.5" style={{ height: '20px' }}>
+    <div className="w-full mt-0.1 px-0.5" style={{ height: '25px' }}>
       <div 
         className="relative rounded-full overflow-hidden w-full h-full flex items-center justify-start"
         style={{ backgroundColor: `hsla(var(--muted-hsl), 0.3)` }}
@@ -66,7 +67,7 @@ const CardProgressBar: React.FC<{ label?: string; current: number; max: number; 
           className="absolute inset-0 rounded-full" 
           style={{ width: `${percentage}%`, backgroundColor: colorVar }} 
         />
-        <div className="relative z-10 w-full text-center text-[15px] font-semibold text-white mix-blend-difference pb-0.5">
+        <div className="relative z-10 w-full text-center text-[15px] font-semibold text-black mix-blend-difference pb-4">
           {label}
         </div>
       </div>      
@@ -91,7 +92,7 @@ const CardVisuals: React.FC<CardVisualsProps> = ({ displayItem, outputWidth, out
         levelForVisuals, 
         title, 
         quantityInStack,
-        displayTextLabel, // Use the new text label property
+        displayTextLabel,
         instanceCurrentStrength, instanceMaxStrength,
         instanceCurrentCharges, instanceMaxCharges,
         instanceCurrentUses, instanceMaxUses,
@@ -104,7 +105,6 @@ const CardVisuals: React.FC<CardVisualsProps> = ({ displayItem, outputWidth, out
 
     const cardBgClass = LEVEL_TO_BG_CLASS[levelForVisuals] || 'bg-muted/30';
     
-    // Determine which set of progress bar values to use
     const currentStrength = displayItem.stackType === 'individual' ? instanceCurrentStrength : aggregateCurrentStrength;
     const maxStrength = displayItem.stackType === 'individual' ? instanceMaxStrength : aggregateMaxStrength;
     const currentCharges = displayItem.stackType === 'individual' ? instanceCurrentCharges : aggregateCurrentCharges;
@@ -143,18 +143,18 @@ const CardVisuals: React.FC<CardVisualsProps> = ({ displayItem, outputWidth, out
                 </div>
             )}
             {/* Card Title and Progress Bars/Text Area */}
-            <div className="w-full h-[30%] flex-shrink-0 flex flex-col items-center justify-between p-1">
+            <div className="w-full h-[30%] flex-shrink-0 flex flex-col items-center justify-start space-y-1">
                 {/* Title */}
-                <p className="text-xl font-bold text-center truncate w-full" style={{ color: itemColorCssVar }}>
+                <p className="text-2xl font-bold text-center truncate w-full" style={{ color: itemColorCssVar }}>
                     {title}
                 </p>
                 
                 {/* Content Area: Either Text Label or Progress Bars */}
                 <div className="w-full flex-grow flex flex-col justify-center items-center">
                     {displayTextLabel ? (
-                        <p className="text-lg font-semibold text-center text-slate-300 px-2">{displayTextLabel}</p>
+                        <p className="text-lg font-semibold text-left text-slate-300 px-2">{displayTextLabel}</p>
                     ) : (
-                        <div className="w-[90%] mx-auto flex flex-col space-y-0.5">
+                        <div className="w-[90%] mx-auto flex flex-col">
                             {maxStrength !== undefined && maxStrength > 0 && (
                                 <CardProgressBar label="Strength" current={currentStrength || 0} max={maxStrength} colorVar={itemColorCssVar} />
                             )}
@@ -255,7 +255,6 @@ const CardTextureRenderer: React.FC<CardTextureRendererProps> = ({ displayItem, 
             tempDivRef.current.style.left = '-9999px';
             tempDivRef.current.style.top = '-9999px';
             tempDivRef.current.style.width = `${outputWidth}px`;
-            // CORRECTED: Changed the stray single quote ' to a backtick `
             tempDivRef.current.style.height = `${outputHeight}px`;
             tempDivRef.current.style.backgroundColor = 'transparent'; 
             document.body.appendChild(tempDivRef.current);

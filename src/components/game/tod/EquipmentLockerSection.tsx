@@ -1,8 +1,7 @@
 // src/components/game/tod/EquipmentLockerSection.tsx
-// MODIFIED BY LEXI (2025-06-27): Reworked interaction and auto-rotation logic to be more robust.
-//                                - Single items in expanded stacks now correctly open the TOD window directly.
-//                                - Fixed mobile bug where the TOD window would close immediately.
-//                                - Corrected auto-rotation behavior after dragging and opening/closing the TOD window.
+// MODIFIED BY LEXI (2025-06-27): Reverted carousel expansion logic.
+//                                - Clicking a stack now replaces it with its children within the existing carousel,
+//                                  rather than creating a new carousel view.
 
 "use client";
 
@@ -148,7 +147,7 @@ const EquipmentCarousel: React.FC<EquipmentCarouselProps> = React.memo(({ itemsT
             interactionState.pointerId = e.pointerId;
             (e.target as HTMLElement).setPointerCapture(e.pointerId);
 
-            stopRotation(); // Use the passed-in function
+            stopRotation();
             appContext.setIsScrollLockActive(true);
 
             interactionState.isDragging = false;
@@ -182,15 +181,14 @@ const EquipmentCarousel: React.FC<EquipmentCarouselProps> = React.memo(({ itemsT
             const wasDragging = interactionState.isDragging;
             const dragDuration = performance.now() - interactionState.downTime;
 
-            // Reset state immediately
             interactionState.isDown = false;
             interactionState.isDragging = false;
             interactionState.pointerId = null;
 
             if (!wasDragging && dragDuration < CLICK_DURATION_THRESHOLD) {
-                // This was a click/tap
                 e.preventDefault();
                 e.stopPropagation();
+                e.stopImmediatePropagation(); // Fix for mobile ghost click
 
                 const rect = canvasElement.getBoundingClientRect();
                 const pointerVector = new THREE.Vector2(
@@ -204,13 +202,11 @@ const EquipmentCarousel: React.FC<EquipmentCarouselProps> = React.memo(({ itemsT
                     while (obj && !obj.userData?.isCarouselItem) obj = obj.parent;
                     if (obj?.userData?.isCarouselItem) {
                         onItemClick(obj.userData.displayItem);
-                        // Don't resume rotation here; let the parent component decide based on TOD window state.
-                        return; // Exit early to avoid starting the resume timer
+                        return;
                     }
                 }
             }
             
-            // If it was a drag, or a click that didn't hit an item, or a long press, resume rotation.
             resumeRotationAfterDelay();
         };
         
@@ -283,7 +279,6 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
     const [pointLightColor, setPointLightColor] = useState<THREE.ColorRepresentation>('hsl(0, 0%, 100%)');
     const sectionRef = useRef<HTMLDivElement>(null);
 
-    // --- Centralized Rotation Control ---
     const autoRotateRef = useRef(true);
     const autoRotateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -295,18 +290,19 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
     const resumeRotationAfterDelay = useCallback(() => {
         if (autoRotateTimeoutRef.current) clearTimeout(autoRotateTimeoutRef.current);
         autoRotateTimeoutRef.current = setTimeout(() => {
-            autoRotateRef.current = true;
+            if (sectionRef.current && !isTODWindowOpen) {
+                 autoRotateRef.current = true;
+            }
         }, AUTO_ROTATE_RESUME_DELAY);
-    }, []);
+    }, [isTODWindowOpen]);
     
-    // Effect to handle resuming rotation when TOD window closes
     useEffect(() => {
-        // This effect runs when isTODWindowOpen changes.
-        // If the window has just closed (was open, is now false), resume rotation.
         if (!isTODWindowOpen) {
             resumeRotationAfterDelay();
+        } else {
+            stopRotation();
         }
-    }, [isTODWindowOpen, resumeRotationAfterDelay]);
+    }, [isTODWindowOpen, resumeRotationAfterDelay, stopRotation]);
 
 
     const { generateChildrenForItem, generateInitialView } = useMemo(() => {
@@ -541,7 +537,7 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
     }, [currentGlobalTheme, themeVersion]);
     
     const handleCarouselItemClick = useCallback((clickedItem: DisplayItem) => {
-        stopRotation(); // Stop rotation on any click
+        stopRotation();
         if (clickedItem.stackType === 'individual') {
             openTODWindow(
                 clickedItem.baseItem?.title || "Item Details",
@@ -560,8 +556,17 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
         } else {
             const children = generateChildrenForItem(clickedItem);
             if (children.length > 0) {
-                 setCarouselDisplayItems(children);
-                 resumeRotationAfterDelay(); // Resume after expanding a stack
+                 setCarouselDisplayItems(currentItems => {
+                    const itemIndex = currentItems.findIndex(item => item.id === clickedItem.id);
+                    if (itemIndex > -1) {
+                        const newItems = [...currentItems];
+                        newItems.splice(itemIndex, 1, ...children);
+                        return newItems;
+                    }
+                    console.warn(`Could not find clicked stack item with id ${clickedItem.id} to expand.`);
+                    return currentItems;
+                });
+                 resumeRotationAfterDelay();
             }
         }
     }, [generateChildrenForItem, openTODWindow, closeTODWindow, currentGlobalTheme, themeVersion, stopRotation, resumeRotationAfterDelay]);
