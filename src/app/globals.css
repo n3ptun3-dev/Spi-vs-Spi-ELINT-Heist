@@ -574,3 +574,24 @@
 .shadow-amber-glow {
     filter: drop-shadow(0 0 2px #f59e0b) drop-shadow(0 0 4px #f59e0b);
 }
+
+@layer components {
+  .item-slider-container {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch; /* For smooth scrolling on iOS */
+  }
+
+  .item-slider-container::-webkit-scrollbar {
+    display: none; /* Hide scrollbar for Chrome, Safari, and Opera */
+  }
+
+  .item-slider-container {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+
+  .item-slider-card {
+    scroll-snap-align: center;
+    scroll-snap-stop: always; /* Ensures it stops on each card */
+  }
+}

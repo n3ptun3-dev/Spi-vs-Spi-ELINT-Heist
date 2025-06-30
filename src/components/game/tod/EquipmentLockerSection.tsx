@@ -1,7 +1,9 @@
 // src/components/game/tod/EquipmentLockerSection.tsx
-// MODIFIED BY LEXI (2025-06-27): Reverted carousel expansion logic.
+// MODIFIED BY LEXI (2025-06-28): Reverted carousel expansion logic.
 //                                - Clicking a stack now replaces it with its children within the existing carousel,
 //                                  rather than creating a new carousel view.
+// MODIFIED BY LEXI (2025-06-29): Updated useAppContext import to include DisplayItem.
+//                                - Modified handleCarouselItemClick to open ItemSliderWindow for individual items.
 
 "use client";
 
@@ -10,7 +12,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
 // --- Imports from shared components and contexts ---
-import { useAppContext, type GameItemBase, type ItemLevel, type ItemCategory, type PlayerInventoryItem } from '@/contexts/AppContext';
+import { useAppContext, type GameItemBase, type ItemLevel, type ItemCategory, type PlayerInventoryItem, type DisplayItem } from '@/contexts/AppContext'; // Update import
 import { HolographicButton, HolographicPanel } from '@/components/game/shared/HolographicPanel';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -19,7 +21,7 @@ import { SHOP_CATEGORIES as APP_SHOP_CATEGORIES, getItemById as getBaseItemByIdF
 import { ShoppingCart } from 'lucide-react';
 
 // --- Import the consolidated CardTextureRenderer and DisplayItem from its dedicated file ---
-import CardTextureRenderer, { type DisplayItem, FALLBACK_IMAGE_SRC } from './CardTextureRenderer';
+import CardTextureRenderer, { FALLBACK_IMAGE_SRC } from './CardTextureRenderer'; // DisplayItem is now imported from AppContext
 
 // --- Constants ---
 const ITEM_WIDTH = 0.9;
@@ -137,10 +139,10 @@ const EquipmentCarousel: React.FC<EquipmentCarouselProps> = React.memo(({ itemsT
         downCoords: { x: 0, y: 0 },
         lastRotation: 0,
     }).current;
-    
+
     useEffect(() => {
         const canvasElement = gl.domElement;
-        
+
         const startInteraction = (e: PointerEvent) => {
             if (interactionState.isDown) return;
             interactionState.isDown = true;
@@ -153,7 +155,7 @@ const EquipmentCarousel: React.FC<EquipmentCarouselProps> = React.memo(({ itemsT
             interactionState.isDragging = false;
             interactionState.downTime = performance.now();
             interactionState.downCoords = { x: e.clientX, y: e.clientY };
-            interactionState.lastRotation = group.current.rotation.y; 
+            interactionState.lastRotation = group.current.rotation.y;
             canvasElement.style.cursor = 'grabbing';
         };
 
@@ -173,7 +175,7 @@ const EquipmentCarousel: React.FC<EquipmentCarouselProps> = React.memo(({ itemsT
 
         const endInteraction = (e: PointerEvent) => {
             if (!interactionState.isDown || e.pointerId !== interactionState.pointerId) return;
-            
+
             (e.target as HTMLElement).releasePointerCapture(e.pointerId);
             canvasElement.style.cursor = 'grab';
             appContext.setIsScrollLockActive(false);
@@ -206,10 +208,10 @@ const EquipmentCarousel: React.FC<EquipmentCarouselProps> = React.memo(({ itemsT
                     }
                 }
             }
-            
+
             resumeRotationAfterDelay();
         };
-        
+
         canvasElement.addEventListener('pointerdown', startInteraction);
         canvasElement.addEventListener('pointermove', moveInteraction);
         canvasElement.addEventListener('pointerup', endInteraction);
@@ -222,7 +224,7 @@ const EquipmentCarousel: React.FC<EquipmentCarouselProps> = React.memo(({ itemsT
             canvasElement.removeEventListener('pointercancel', endInteraction);
         };
     }, [gl, onItemClick, camera, raycaster, invalidate, appContext, itemsToDisplay.length, stopRotation, resumeRotationAfterDelay]);
-    
+
     useFrame((state, delta) => {
         if (group.current && autoRotateRef.current && itemsToDisplay.length > 1) {
             group.current.rotation.y += ROTATION_SPEED * delta * 60;
@@ -272,7 +274,7 @@ Resizer.displayName = 'Resizer';
 // ============================================================================
 
 export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset }) => {
-    const { openTODWindow, closeTODWindow, playerInventory, getItemById, openSpyShop, isTODWindowOpen } = useAppContext();
+    const { openTODWindow, closeTODWindow, playerInventory, getItemById, openSpyShop, isTODWindowOpen, openItemSlider } = useAppContext();
     const { theme: currentGlobalTheme, themeVersion } = useTheme();
     const [carouselDisplayItems, setCarouselDisplayItems] = useState<DisplayItem[]>([]);
     const [initialItems, setInitialItems] = useState<DisplayItem[]>([]);
@@ -295,7 +297,7 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
             }
         }, AUTO_ROTATE_RESUME_DELAY);
     }, [isTODWindowOpen]);
-    
+
     useEffect(() => {
         if (!isTODWindowOpen) {
             resumeRotationAfterDelay();
@@ -309,9 +311,9 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
         const inventoryArray = Object.values(playerInventory)
             .map(invDetails => ({ invDetails, baseDef: getBaseItemByIdFromGameItems(invDetails.id) }))
             .filter(item => item.baseDef && item.invDetails.quantity > 0) as Array<{
-              invDetails: PlayerInventoryItem; baseDef: GameItemBase 
+              invDetails: PlayerInventoryItem; baseDef: GameItemBase
             }>;
-        
+
         const createIndividualDisplayItem = (invItemDetails: PlayerInventoryItem, baseDef: GameItemBase, path: string[], instanceIndex: number): DisplayItem => {
             let displayTextLabel: string | undefined = undefined;
             let hasBar = false;
@@ -331,17 +333,17 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
                     displayTextLabel = `Activation Cost: ${baseDef.perUseCost} ELINT`;
                 }
             }
-            
+
             return {
-                id: `${invItemDetails.id}_instance_${instanceIndex}_${path.join('_')}`, 
-                baseItem: baseDef, 
+                id: `${invItemDetails.id}_instance_${instanceIndex}_${path.join('_')}`,
+                baseItem: baseDef,
                 title: baseDef.title || baseDef.name,
-                quantityInStack: 1, 
+                quantityInStack: 1,
                 imageSrc: baseDef.tileImageSrc || baseDef.imageSrc || FALLBACK_IMAGE_SRC,
                 colorVar: ITEM_LEVEL_COLORS_CSS_VARS[baseDef.level] || 'var(--level-1-color)',
-                levelForVisuals: baseDef.level, 
-                stackType: 'individual', 
-                path, 
+                levelForVisuals: baseDef.level,
+                stackType: 'individual',
+                path,
                 dataAiHint: baseDef.dataAiHint,
                 displayTextLabel,
                 instanceCurrentStrength: hasBar ? invItemDetails.currentStrength : undefined,
@@ -354,16 +356,16 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
         };
 
         const createAggregatedStack = (items: Array<{ invDetails: PlayerInventoryItem; baseDef: GameItemBase }>, stackIdPrefix: string, stackTitle: string, stackType: 'category' | 'itemType' | 'itemLevel', path: string[]): DisplayItem | null => {
-            if (items.length === 0) return null; 
-            
-            let highestLevelItem = items[0].baseDef; 
+            if (items.length === 0) return null;
+
+            let highestLevelItem = items[0].baseDef;
             let totalQuantity = 0;
             let aggCurrentStrength = 0, aggMaxStrength = 0, aggCurrentCharges = 0, aggMaxCharges = 0, aggCurrentAlerts = 0, aggMaxAlerts = 0;
             let hasBarItems = false;
             const textLabels = new Set<string>();
 
-            items.forEach(({ invDetails, baseDef }) => { 
-                totalQuantity += invDetails.quantity; 
+            items.forEach(({ invDetails, baseDef }) => {
+                totalQuantity += invDetails.quantity;
                 if (baseDef.level > highestLevelItem.level) {
                     highestLevelItem = baseDef;
                 }
@@ -400,15 +402,15 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
 
             const uniqueIdPart = path.join('_') || stackTitle.replace(/\s+/g, '_');
             return {
-                id: `${stackIdPrefix}_${uniqueIdPart}`, 
+                id: `${stackIdPrefix}_${uniqueIdPart}`,
                 baseItem: null,
-                title: stackTitle, 
-                quantityInStack: totalQuantity, 
-                imageSrc: highestLevelItem.tileImageSrc || highestLevelItem.imageSrc || FALLBACK_IMAGE_SRC, 
-                colorVar: ITEM_LEVEL_COLORS_CSS_VARS[highestLevelItem.level] || 'var(--level-1-color)', 
-                levelForVisuals: highestLevelItem.level, 
-                stackType, 
-                path, 
+                title: stackTitle,
+                quantityInStack: totalQuantity,
+                imageSrc: highestLevelItem.tileImageSrc || highestLevelItem.imageSrc || FALLBACK_IMAGE_SRC,
+                colorVar: ITEM_LEVEL_COLORS_CSS_VARS[highestLevelItem.level] || 'var(--level-1-color)',
+                levelForVisuals: highestLevelItem.level,
+                stackType,
+                path,
                 dataAiHint: highestLevelItem.dataAiHint || stackTitle.toLowerCase(),
                 displayTextLabel: finalDisplayTextLabel,
                 aggregateCurrentStrength: hasBarItems ? aggCurrentStrength : undefined,
@@ -421,17 +423,17 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
         };
 
         const generateChildrenForItem = (item: DisplayItem): DisplayItem[] => {
-            const { stackType, path } = item; 
+            const { stackType, path } = item;
             let children: DisplayItem[] = [];
-            
+
             if (stackType === 'category') {
                 const categoryToExpand = path[0] as ItemCategory;
                 const itemsInExpandedCategory = inventoryArray.filter(i => i.baseDef.category === categoryToExpand);
-                const groupedByBaseName = itemsInExpandedCategory.reduce((acc, i) => { 
-                    (acc[i.baseDef.name] = acc[i.baseDef.name] || []).push(i); 
-                    return acc; 
+                const groupedByBaseName = itemsInExpandedCategory.reduce((acc, i) => {
+                    (acc[i.baseDef.name] = acc[i.baseDef.name] || []).push(i);
+                    return acc;
                 }, {} as Record<string, typeof inventoryArray>);
-                
+
                 Object.entries(groupedByBaseName).forEach(([baseName, items]) => {
                     const totalQuantityForBaseName = items.reduce((sum, i) => sum + i.invDetails.quantity, 0);
 
@@ -439,12 +441,12 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
                         const theOnlyItem = items[0];
                         children.push(createIndividualDisplayItem(theOnlyItem.invDetails, theOnlyItem.baseDef, [...path, theOnlyItem.invDetails.id], 0));
                     } else {
-                        const stack = createAggregatedStack(items, 'itemType', baseName, 'itemType', [...path, baseName]); 
-                        if (stack) children.push(stack); 
+                        const stack = createAggregatedStack(items, 'itemType', baseName, 'itemType', [...path, baseName]);
+                        if (stack) children.push(stack);
                     }
                 });
             } else if (stackType === 'itemType') {
-                const [category, baseName] = path; 
+                const [category, baseName] = path;
                 const itemsOfExpandedType = inventoryArray.filter(i => i.baseDef.category === category && i.baseDef.name === baseName);
                 const groupedByInvId = itemsOfExpandedType.reduce((acc, i) => {
                     (acc[i.invDetails.id] = acc[i.invDetails.id] || []).push(i);
@@ -463,21 +465,21 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
             } else if (stackType === 'itemLevel') {
                 const invIdToExpand = path[path.length - 1];
                 const itemToExpandDetails = inventoryArray.find(i => i.invDetails.id === invIdToExpand);
-                if (itemToExpandDetails) { 
+                if (itemToExpandDetails) {
                     for (let i = 0; i < itemToExpandDetails.invDetails.quantity; i++) {
-                        children.push(createIndividualDisplayItem(itemToExpandDetails.invDetails, itemToExpandDetails.baseDef, [...path], i)); 
+                        children.push(createIndividualDisplayItem(itemToExpandDetails.invDetails, itemToExpandDetails.baseDef, [...path], i));
                     }
                 }
             }
             return children.sort((a,b) => a.title.localeCompare(b.title));
         };
-        
+
         const generateInitialView = (): DisplayItem[] => {
             const totalItems = inventoryArray.reduce((sum, item) => sum + item.invDetails.quantity, 0);
             if (totalItems > 0 && totalItems <= INITIAL_CAROUSEL_TARGET_COUNT) {
-                 const itemStacks = inventoryArray.reduce((acc, item) => { 
-                     (acc[item.invDetails.id] = acc[item.invDetails.id] || []).push(item); 
-                     return acc; 
+                 const itemStacks = inventoryArray.reduce((acc, item) => {
+                     (acc[item.invDetails.id] = acc[item.invDetails.id] || []).push(item);
+                     return acc;
                  }, {} as Record<string, typeof inventoryArray>);
 
                  return Object.values(itemStacks).map(itemsOfSameId => {
@@ -496,7 +498,7 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
 
         return { generateChildrenForItem, generateInitialView };
     }, [playerInventory, getItemById]);
-    
+
     useEffect(() => {
         const items = generateInitialView();
         setCarouselDisplayItems(items);
@@ -521,7 +523,7 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
         observer.observe(currentSectionRef);
         return () => { observer.unobserve(currentSectionRef); };
     }, [initialItems, carouselDisplayItems.length, resumeRotationAfterDelay, stopRotation]);
-    
+
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const hslVarName = (currentGlobalTheme === 'cyphers' || currentGlobalTheme === 'shadows') ? '--primary-hsl' : '--accent-hsl';
@@ -535,41 +537,91 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
             }
         }
     }, [currentGlobalTheme, themeVersion]);
-    
+
     const handleCarouselItemClick = useCallback((clickedItem: DisplayItem) => {
         stopRotation();
-        if (clickedItem.stackType === 'individual') {
-            openTODWindow(
-                clickedItem.baseItem?.title || "Item Details",
-                <div className="font-rajdhani p-4 text-center">
-                    <h3 className="text-xl font-bold mb-2" style={{ color: clickedItem.colorVar }}>{clickedItem.title}</h3>
-                    <img src={clickedItem.imageSrc || FALLBACK_IMAGE_SRC} alt={clickedItem.title} className="mx-auto my-4 max-w-[150px] object-contain"
-                         onError={(e) => {
-                            const target = e.currentTarget as HTMLImageElement;
-                            if (target.src !== `${window.location.origin}${FALLBACK_IMAGE_SRC}`) { target.src = `${window.location.origin}${FALLBACK_IMAGE_SRC}`; target.onerror = null; }
-                         }}
-                    />
-                    <HolographicButton onClick={closeTODWindow} className="mt-4" explicitTheme={currentGlobalTheme}>Close</HolographicButton>
-                </div>,
-                { showCloseButton: true, explicitTheme: currentGlobalTheme, themeVersion }
+        if (clickedItem.stackType === 'individual' && clickedItem.baseItem) {
+            // --- THIS IS THE KEY CHANGE ---
+            // Instead of opening a TOD Window, open the new Item Slider Window.
+            // We need to find all items of the same type and level in inventory.
+            const allInstances = Object.values(playerInventory)
+                .filter(invItem => invItem.id === clickedItem.baseItem!.id)
+                .flatMap(invItem =>
+                    Array.from({ length: invItem.quantity }, (_, i) => ({...invItem, instanceIndex: i}))
+                );
+
+            const displayItemsForSlider = allInstances.map((inst, i) => {
+                 // This logic should mirror how individual DisplayItems are created
+                 const baseDef = getItemById(inst.id);
+                 if (!baseDef) return null; // Should not happen if filtered correctly above
+
+                 let displayTextLabel: string | undefined = undefined;
+                 let hasBar = false;
+
+                 if (baseDef.category === 'Hardware' || BAR_ITEMS_BY_NAME.has(baseDef.name)) {
+                     hasBar = true;
+                 }
+
+                 if (!hasBar) {
+                     if (SINGLE_USE_ITEMS.has(baseDef.name)) {
+                         displayTextLabel = 'Single Use';
+                     } else if (baseDef.name === 'Pick (L1)') {
+                         displayTextLabel = 'standard issue';
+                     } else if (baseDef.name === 'Reinforced Foundation') {
+                         displayTextLabel = 'Permanent';
+                     } else if ((baseDef.category === 'Infiltration Gear' || baseDef.category === 'Lock Fortifiers') && baseDef.perUseCost && baseDef.perUseCost > 0) {
+                         displayTextLabel = `Activation Cost: ${baseDef.perUseCost} ELINT`;
+                     }
+                 }
+
+                 return {
+                     id: `${inst.id}_slider_${i}`, // Unique ID for each instance in the slider
+                     baseItem: baseDef,
+                     title: baseDef.title || baseDef.name,
+                     quantityInStack: 1, // Always 1 for individual items in slider
+                     imageSrc: baseDef.tileImageSrc || baseDef.imageSrc || FALLBACK_IMAGE_SRC,
+                     colorVar: ITEM_LEVEL_COLORS_CSS_VARS[baseDef.level] || 'var(--level-1-color)',
+                     levelForVisuals: baseDef.level,
+                     stackType: 'individual',
+                     path: clickedItem.path, // Maintain the path from the clicked item for consistency
+                     dataAiHint: baseDef.dataAiHint,
+                     displayTextLabel,
+                     instanceCurrentStrength: hasBar ? inst.currentStrength : undefined,
+                     instanceMaxStrength: hasBar ? baseDef.strength?.max : undefined,
+                     instanceCurrentCharges: hasBar ? (inst as any).currentCharges : undefined,
+                     instanceMaxCharges: hasBar ? (baseDef as any).maxCharges : undefined,
+                     instanceCurrentAlerts: hasBar ? (inst as any).currentAlerts : undefined,
+                     instanceMaxAlerts: hasBar ? (baseDef as any).maxAlerts : undefined,
+                 } as DisplayItem;
+            }).filter((item): item is DisplayItem => item !== null); // Filter out any nulls
+
+            // Find the index of the specific item clicked to start there
+            const initialIndex = displayItemsForSlider.findIndex(d => d.id.startsWith(clickedItem.id));
+
+            openItemSlider(
+                displayItemsForSlider,
+                { type: 'locker', itemLevel: clickedItem.baseItem.level },
+                initialIndex >= 0 ? initialIndex : 0
             );
+
         } else {
+            // Existing logic for expanding stacks
             const children = generateChildrenForItem(clickedItem);
             if (children.length > 0) {
-                 setCarouselDisplayItems(currentItems => {
-                    const itemIndex = currentItems.findIndex(item => item.id === clickedItem.id);
-                    if (itemIndex > -1) {
-                        const newItems = [...currentItems];
-                        newItems.splice(itemIndex, 1, ...children);
-                        return newItems;
-                    }
-                    console.warn(`Could not find clicked stack item with id ${clickedItem.id} to expand.`);
-                    return currentItems;
-                });
+                  setCarouselDisplayItems(currentItems => {
+                     const itemIndex = currentItems.findIndex(item => item.id === clickedItem.id);
+                     if (itemIndex > -1) {
+                         const newItems = [...currentItems];
+                         newItems.splice(itemIndex, 1, ...children);
+                         return newItems;
+                     }
+                     console.warn(`Could not find clicked stack item with id ${clickedItem.id} to expand.`);
+                     return currentItems;
+                 });
                  resumeRotationAfterDelay();
             }
         }
-    }, [generateChildrenForItem, openTODWindow, closeTODWindow, currentGlobalTheme, themeVersion, stopRotation, resumeRotationAfterDelay]);
+    }, [playerInventory, openItemSlider, generateChildrenForItem, stopRotation, resumeRotationAfterDelay, getItemById]); // Added getItemById to dependencies
 
     const dynamicCarouselRadius = useMemo(() => {
         const numItems = carouselDisplayItems.length;
@@ -580,8 +632,8 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
     }, [carouselDisplayItems.length]);
 
     return (
-        <div ref={sectionRef} className="flex flex-col h-full p-4 md:p-6"> 
-            <div className="relative w-full h-full flex flex-col items-center justify-center"> 
+        <div ref={sectionRef} className="flex flex-col h-full p-4 md:p-6">
+            <div className="relative w-full h-full flex flex-col items-center justify-center">
                 <div className={cn("absolute inset-0 max-w-4xl mx-auto rounded-lg", "overflow-hidden", "z-0")}>
                     <div className={cn("absolute rounded-md", "bg-yellow-500", "filter blur-xl opacity-70")}
                     style={{ height: 'min(35vh, 450px)', minWidth: `calc(min(35vh, 450px) * 1.777)`, left: '50%', top: '50%', transform: 'translate(-50%, -50%) scale(1.05)' }} />
@@ -595,26 +647,26 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
                         id="locker-carousel-canvas-container"
                         className={cn( "absolute inset-0 z-10", "flex flex-col justify-center items-center", "overflow-hidden" )}
                         style={{ cursor: 'grab', touchAction: 'none' }} >
-                        
+
                         {carouselDisplayItems.length > 0 ? (
                             <Canvas
                                 id="locker-carousel-canvas"
                                 camera={{ position: [0, 0, CAMERA_BASE_Z_DISTANCE], fov: INITIAL_CAMERA_FOV }}
                                 shadows gl={{ antialias: true, alpha: true }} style={{ background: 'transparent' }}
                                 onCreated={({ gl }) => { gl.setClearColor(0x000000, 0); }}
-                                className="relative w-full h-full" 
+                                className="relative w-full h-full"
                             >
                                 <ambientLight intensity={1.2} />
                                 <directionalLight position={[5, 5, 5]} intensity={0.8} castShadow />
                                 <pointLight position={[-5, 5, 15]} intensity={1.5} color={pointLightColor} />
                                 <pointLight position={[0, -10, 0]} intensity={0.3} />
                                 <CameraManager carouselRadius={dynamicCarouselRadius} />
-                                <EquipmentCarousel 
-                                    key={carouselDisplayItems.map(item => item.id).join('-')} 
-                                    itemsToDisplay={carouselDisplayItems} 
-                                    onItemClick={handleCarouselItemClick} 
-                                    carouselRadius={dynamicCarouselRadius} 
-                                    autoRotateRef={autoRotateRef} 
+                                <EquipmentCarousel
+                                    key={carouselDisplayItems.map(item => item.id).join('-')}
+                                    itemsToDisplay={carouselDisplayItems}
+                                    onItemClick={handleCarouselItemClick}
+                                    carouselRadius={dynamicCarouselRadius}
+                                    autoRotateRef={autoRotateRef}
                                     stopRotation={stopRotation}
                                     resumeRotationAfterDelay={resumeRotationAfterDelay}
                                 />
@@ -627,14 +679,14 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
                             </div>
                         )}
                     </div>
-                    <div className="absolute top-0 left-0 w-full z-20 flex items-center justify-between p-3 md:p-4"> 
+                    <div className="absolute top-0 left-0 w-full z-20 flex items-center justify-between p-3 md:p-4">
                         <h2 className="text-2xl font-orbitron holographic-text">
                             Equipment Locker
                         </h2>
                         <HolographicButton onClick={openSpyShop} className="!p-2" aria-label="Open Spy Shop" explicitTheme={currentGlobalTheme}>
                             <ShoppingCart className="w-5 h-5 icon-glow" />
                         </HolographicButton>
-                    </div>  
+                    </div>
                     <p className="absolute bottom-0 left-0 w-full z-20 text-center text-xs text-muted-foreground p-3 md:p-4">
                         {carouselDisplayItems.length > 0 ? "Drag to rotate. Click stack to expand or item for details." : ""}
                     </p>

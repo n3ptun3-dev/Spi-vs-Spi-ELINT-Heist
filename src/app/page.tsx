@@ -1,6 +1,7 @@
 // src/app/page.tsx
-// MODIFIED BY LEXI (v12): Changed useMemo callback to explicitly return the array
-// of section components, to potentially resolve a "Expected ','" parsing error.
+// MODIFIED BY LEXI (v13): Added new imports for ItemSliderWindow, OpponentVaultPage, and ConfirmationPopup.
+//                           Integrated the rendering of these new components into the main return block,
+//                           utilizing the new context values from useAppContext.
 
 "use client";
 
@@ -23,6 +24,11 @@ import { QuantumIndustries } from '@/components/game/spyshop/QuantumIndustries';
 // import { generateWelcomeMessage, type WelcomeMessageInput } from '@/ai/flows/welcome-message'; // AI Disabled
 import { cn } from '@/lib/utils';
 import { CodenameInput } from '@/components/game/onboarding/CodenameInput';
+
+// --- NEW IMPORTS ---
+import { ItemSliderWindow } from '@/components/game/item-browser/ItemSliderWindow';
+import { OpponentVaultPage } from '@/components/game/OpponentVaultPage';
+import { ConfirmationPopup } from '@/components/game/shared/ConfirmationPopup';
 
 
 const DEFAULT_PLAYER_STATS_FOR_NEW_PLAYER: PlayerStats = {
@@ -56,6 +62,14 @@ export default function HomePage() {
     closeInventoryTOD,
     openTODWindow,
     isScrollLockActive, // Get scroll lock state from AppContext
+
+    // --- NEW CONTEXT VALUES ---
+    itemSliderState,
+    closeItemSlider,
+    opponentVaultState,
+    closeOpponentVault,
+    confirmationState,
+    hideConfirmation,
   } = appContext;
 
   const { theme: currentThemeContextTheme, themeVersion } = useTheme();
@@ -117,8 +131,6 @@ export default function HomePage() {
         type: 'hq',
         isPinned: true,
       });
-       setIsLoading(false);
-    } else {
        setIsLoading(false);
     }
   }, [onboardingStep, isClientMounted, playerSpyName, faction, playerStats, addMessage, setIsLoading, isAppLoading, isTODWindowOpen, playBootAnimation]);
@@ -311,6 +323,33 @@ export default function HomePage() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* --- NEW COMPONENT RENDERING --- */}
+
+      {/* The Item Slider Window */}
+      <ItemSliderWindow
+          isOpen={itemSliderState.isOpen}
+          onClose={closeItemSlider}
+          items={itemSliderState.items}
+          context={itemSliderState.context!}
+          initialIndex={itemSliderState.initialIndex}
+      />
+
+      {/* The Opponent Vault Page */}
+      <OpponentVaultPage
+          isOpen={opponentVaultState.isOpen}
+          onClose={closeOpponentVault}
+          opponentId={opponentVaultState.opponentId}
+      />
+
+      {/* The Confirmation Popup */}
+      {confirmationState && (
+          <ConfirmationPopup
+              isOpen={!!confirmationState}
+              onClose={hideConfirmation}
+              {...confirmationState}
+          />
       )}
 
       <TODWindow

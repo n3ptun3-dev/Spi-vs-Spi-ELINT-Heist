@@ -1,13 +1,16 @@
 // src/components/game/tod/VaultSection.tsx
 
 "use client";
-import { useState } from 'react';
-import { useAppContext, type GameItemBase, type ItemCategory, type VaultSlot } from '@/contexts/AppContext';
+import { useState, useCallback, useMemo } from 'react';
+import { useAppContext, type VaultSlot, type DisplayItem, type ItemCategory, type GameItemBase, type PlayerInventoryItem } from '@/contexts/AppContext'; // Update import: Added type PlayerInventoryItem
 import { HolographicPanel, HolographicButton, HolographicInput } from '@/components/game/shared/HolographicPanel';
-import { ShieldCheck, ShieldOff, ShieldAlert, Edit3, Lock, Unlock, Sigma } from 'lucide-react'; // Added Sigma for ELINT
+import { ShieldCheck, ShieldOff, ShieldAlert, Edit3, Lock, Unlock, Sigma, MoreVertical } from 'lucide-react'; // Added Sigma and MoreVertical for ELINT
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext'; // Import useTheme
-import { getItemById } from '@/lib/game-items'; // Ensure getItemById is imported
+import { getItemById as getBaseItemByIdFromGameItems } from '@/lib/game-items'; // Ensure getItemById is imported
+import { ITEM_LEVEL_COLORS_CSS_VARS } from '@/lib/constants'; // Import for DisplayItem creation
+import { FALLBACK_IMAGE_SRC } from './CardTextureRenderer'; // Import for DisplayItem creation
+
 
 interface SectionProps {
   parallaxOffset: number;
@@ -17,16 +20,24 @@ const MAX_LOCK_SLOTS = 4;
 const MAX_UPGRADE_SLOTS = 4;
 
 export function VaultSection({ parallaxOffset }: SectionProps) {
-  const { 
-    faction, 
-    playerSpyName, 
-    openInventoryTOD, 
-    closeInventoryTOD, 
+  const {
+    faction,
+    playerSpyName,
+    openInventoryTOD, // Keeping for now if other things still use it, but will deprecate for item slider
+    closeInventoryTOD,
     playerVault, // Get playerVault from context
     deployItemToVault, // Get deployItemToVault from context
-    playerStats 
+    playerStats,
+    openItemSlider, // NEW: For opening item slider
+    openTODWindow, // For temporary options modal
+    closeTODWindow, // For temporary options modal
+    showConfirmation, // NEW: For confirmation popups
+    playerInventory, // Needed to filter items for slider
+    rechargeItem, // NEW: Recharge item action
+    offloadItem, // NEW: Offload item action
+    upgradeLock, // NEW: Upgrade lock action
   } = useAppContext();
-  const { theme: currentGlobalTheme } = useTheme(); // Get current theme
+  const { theme: currentGlobalTheme, themeVersion } = useTheme(); // Get current theme
 
   const [vaultTitle, setVaultTitle] = useState(playerSpyName ? `${playerSpyName}'s Vault` : "[UNCLASSIFIED]");
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -57,52 +68,194 @@ export function VaultSection({ parallaxOffset }: SectionProps) {
     // TODO: Persist vaultTitle with player data if this feature is desired long-term
   };
 
-  const handleSlotClick = (slot: VaultSlot) => {
-    let categoryToOpen: ItemCategory | undefined;
-    let todTitle = '';
-    let purpose: 'equip_lock' | 'equip_nexus' | undefined;
+  // Helper to create a DisplayItem from a PlayerInventoryItem and its GameItemBase
+  const createDisplayItem = useCallback((invItem: PlayerInventoryItem, baseItem: GameItemBase): DisplayItem => {
+    return {
+      id: invItem.id, // Or a more unique instance ID if needed later
+      baseItem: baseItem,
+      title: baseItem.title || baseItem.name,
+      quantityInStack: invItem.quantity,
+      imageSrc: baseItem.tileImageSrc || baseItem.imageSrc || FALLBACK_IMAGE_SRC,
+      colorVar: ITEM_LEVEL_COLORS_CSS_VARS[baseItem.level] || 'var(--level-1-color)',
+      levelForVisuals: baseItem.level,
+      stackType: 'individual', // Assuming these are individual items for display
+      path: [], // Path might not be relevant for simple inventory display
+      dataAiHint: baseItem.dataAiHint,
+      instanceCurrentStrength: invItem.currentStrength,
+      instanceMaxStrength: baseItem.strength?.max,
+      instanceCurrentCharges: invItem.currentCharges,
+      instanceMaxCharges: baseItem.maxCharges,
+      instanceCurrentAlerts: invItem.currentAlerts,
+      instanceMaxAlerts: baseItem.maxAlerts,
+      instanceCurrentUses: invItem.currentUses,
+      instanceMaxUses: baseItem.maxUses,
+    };
+  }, []);
 
-    // Determine category based on slot type
+
+  const handleEmptySlotClick = useCallback((slot: VaultSlot) => {
+    let categoryToOpen: ItemCategory | undefined;
+    let contextType: 'deploy_lock' | 'deploy_nexus' | undefined;
+
     if (slot.type === 'lock') {
-      // For lock slots, we want to show items from 'Hardware' (which are locks)
-      // AND 'Lock Fortifiers'
-      // This requires a special handling or a combined category view if your InventoryBrowserInTOD supports it.
-      // For now, let's assume we might need to refine this or the InventoryBrowser.
-      // Opening 'Hardware' for now as it contains actual locks.
-      categoryToOpen = 'Hardware'; // Or a new combined category if needed
-      todTitle = `Equip Lock Slot ${parseInt(slot.id.split('_')[2]) + 1}`;
-      purpose = 'equip_lock';
+      categoryToOpen = 'Hardware';
+      contextType = 'deploy_lock';
     } else if (slot.type === 'upgrade') {
       categoryToOpen = 'Nexus Upgrades';
-      todTitle = `Equip Vault Upgrade Slot ${parseInt(slot.id.split('_')[2]) + 1}`;
-      purpose = 'equip_nexus';
+      contextType = 'deploy_nexus';
     }
 
-    if (categoryToOpen) {
-      openInventoryTOD({
-        category: categoryToOpen,
-        title: todTitle,
-        purpose: purpose,
-        onItemSelect: async (item: GameItemBase) => {
-          console.log(`Agent ${playerSpyName} selected ${item.name} for ${slot.type} slot ${slot.id}`);
-          await deployItemToVault(slot.id, item.id);
-          closeInventoryTOD();
-        }
-      });
+    if (categoryToOpen && contextType) {
+        // Get all items from that category in player's inventory
+        const itemsForSlider: DisplayItem[] = Object.values(playerInventory)
+            .filter(invItem => getBaseItemByIdFromGameItems(invItem.id)?.category === categoryToOpen)
+            .flatMap(invItem => {
+                const baseItem = getBaseItemByIdFromGameItems(invItem.id);
+                if (!baseItem) return [];
+                // Create a DisplayItem for each *quantity* of the item in inventory
+                return Array.from({ length: invItem.quantity }, (_, i) => ({
+                    ...createDisplayItem(invItem, baseItem),
+                    id: `${invItem.id}_instance_${i}`, // Ensure unique ID for each instance in slider
+                    instanceIndex: i, // Add an instance index for tracking if needed
+                }));
+            });
+
+        openItemSlider(itemsForSlider, { type: contextType, vaultSlotId: slot.id });
+        closeTODWindow(); // Close any open TOD window before opening slider
     } else {
       console.warn(`No inventory category defined for slot type: ${slot.type}`);
     }
-  };
+  }, [playerInventory, openItemSlider, closeTODWindow, createDisplayItem]);
 
-  const handleClearSlot = async (slotId: string) => {
-    await deployItemToVault(slotId, null); // Pass null to clear the item
-  };
+  const handleClearSlot = useCallback(async (slotId: string) => {
+    showConfirmation({
+        title: "Confirm Removal",
+        content: "Are you sure you want to remove this item from the vault and return it to your locker?",
+        confirmText: "Remove",
+        cancelText: "Cancel",
+        onConfirm: async () => {
+            await deployItemToVault(slotId, null); // Pass null to clear the item
+            closeTODWindow(); // Close options modal if open
+        },
+        // Removed onCancel as ConfirmationPopup's onClose handles it.
+    });
+  }, [deployItemToVault, showConfirmation, closeTODWindow]);
 
-  const centralHexagonColor = faction === 'Cyphers' ? 'hsl(var(--primary-hsl))' : faction === 'Shadows' ? 'hsl(var(--primary-hsl))' : 'hsl(var(--muted-hsl))';
+  const handleRechargeClick = useCallback(async (slot: VaultSlot) => {
+      if (!slot.item) return;
+      const itemDetails = getBaseItemByIdFromGameItems(slot.item.id);
+      if (!itemDetails) return;
+
+      closeTODWindow(); // Close the options modal first
+
+      showConfirmation({
+          title: `Recharge ${itemDetails.name}?`,
+          content: `Recharge will restore this item to full strength/charges. Cost: ${itemDetails.rechargeCost || 50} ELINT. Confirm?`,
+          confirmText: "Recharge",
+          cancelText: "Cancel",
+          onConfirm: async () => {
+              const success = await rechargeItem(slot.item!.id, slot.id);
+              if (success) {
+                  // Message handled by AppContext
+              } else {
+                  // Message handled by AppContext
+              }
+          },
+          // Removed onCancel as ConfirmationPopup's onClose handles it.
+      });
+  }, [rechargeItem, showConfirmation, closeTODWindow]);
+
+
+  const handleOffloadClick = useCallback(async (slot: VaultSlot) => {
+      if (!slot.item) return;
+      const itemDetails = getBaseItemByIdFromGameItems(slot.item.id);
+      if (!itemDetails) return;
+
+      closeTODWindow(); // Close the options modal first
+
+      showConfirmation({
+          title: `Offload ${itemDetails.name}?`,
+          content: `Offloading this item will permanently remove it from your inventory and vault. This cannot be undone. Confirm?`,
+          confirmText: "Offload",
+          cancelText: "Cancel",
+          onConfirm: async () => {
+              const success = await offloadItem(slot.item!.id);
+              if (success) {
+                  await deployItemToVault(slot.id, null); // Ensure slot is cleared after offload
+                  // Message handled by AppContext
+              } else {
+                  // Message handled by AppContext
+              }
+          },
+          // Removed onCancel as ConfirmationPopup's onClose handles it.
+      });
+  }, [offloadItem, showConfirmation, closeTODWindow, deployItemToVault]);
+
+
+  const handleUpgradeClick = useCallback((slot: VaultSlot) => {
+    if (!slot.item) return;
+    const currentLockDetails = getBaseItemByIdFromGameItems(slot.item.id);
+    if (!currentLockDetails || currentLockDetails.category !== 'Hardware') return;
+
+    // Find suitable upgrade locks in inventory
+    const upgradeCandidates: DisplayItem[] = Object.values(playerInventory)
+        .filter(invItem => {
+            const baseItem = getBaseItemByIdFromGameItems(invItem.id);
+            return (
+                baseItem &&
+                baseItem.category === 'Hardware' &&
+                baseItem.level >= currentLockDetails.level && // Can upgrade to same level or higher
+                baseItem.level <= playerStats.level // Can't upgrade beyond player's current max item level
+            );
+        })
+        .flatMap(invItem => {
+            const baseItem = getBaseItemByIdFromGameItems(invItem.id);
+            if (!baseItem) return [];
+            return Array.from({ length: invItem.quantity }, (_, i) => ({
+                ...createDisplayItem(invItem, baseItem),
+                id: `${invItem.id}_instance_${i}`, // Ensure unique ID for each instance in slider
+                instanceIndex: i,
+            }));
+        });
+
+    const currentLockAsDisplayItem = createDisplayItem(slot.item, currentLockDetails);
+
+    closeTODWindow(); // Close the options modal
+    openItemSlider(upgradeCandidates, {
+        type: 'upgrade_lock',
+        vaultSlotId: slot.id,
+        currentLock: currentLockAsDisplayItem,
+    });
+  }, [playerInventory, playerStats.level, openItemSlider, closeTODWindow, createDisplayItem]);
+
+  const handleFilledSlotClick = useCallback((slot: VaultSlot) => {
+      if (!slot.item) return;
+      const itemDetails = getBaseItemByIdFromGameItems(slot.item.id);
+      if (!itemDetails) return;
+
+      openTODWindow(
+          itemDetails.name,
+          <div className="flex flex-col gap-3 p-2 font-rajdhani">
+              <HolographicButton onClick={() => handleRechargeClick(slot)} explicitTheme={currentGlobalTheme}>Recharge</HolographicButton>
+              {itemDetails.category === 'Hardware' && ( // Only show upgrade for locks
+                  <HolographicButton onClick={() => handleUpgradeClick(slot)} explicitTheme={currentGlobalTheme}>Upgrade</HolographicButton>
+              )}
+              {/* <HolographicButton onClick={() => { /* Call fortify logic * / }}>Fortify</HolographicButton> */} {/* Fortify logic not yet implemented */}
+              <HolographicButton onClick={() => handleOffloadClick(slot)} className="!border-amber-500 !text-amber-500" explicitTheme={currentGlobalTheme}>Offload</HolographicButton>
+              <HolographicButton onClick={() => handleClearSlot(slot.id)} className="!border-red-500 !text-red-500" explicitTheme={currentGlobalTheme}>Return to Locker</HolographicButton>
+          </div>,
+          { showCloseButton: true, explicitTheme: currentGlobalTheme, themeVersion }
+      );
+  }, [openTODWindow, handleRechargeClick, handleUpgradeClick, handleOffloadClick, handleClearSlot, currentGlobalTheme, themeVersion]);
+
+
+  // Update: Central Hexagon color now uses primary-hsl for Observer as well
+  const centralHexagonColor = faction === 'Cyphers' || faction === 'Shadows' ?
+    'hsl(var(--primary-hsl))' : 'hsl(var(--primary-hsl))'; // Now always primary color
 
   return (
     <div className="flex flex-col items-center justify-center p-4 md:p-6 h-full">
-      <HolographicPanel 
+      <HolographicPanel
         className="w-full h-full max-w-4xl flex flex-col items-center relative"
         explicitTheme={currentGlobalTheme} // Ensure panel is themed
       >
@@ -138,7 +291,7 @@ export function VaultSection({ parallaxOffset }: SectionProps) {
 
         {/* Central Hexagon Core & Slots & ELINT Display */}
         <div className="relative flex-grow w-full flex items-center justify-center aspect-square max-h-[70vh] max-w-[70vh]">
-          {/* Central Hexagon */}
+          {/* Central Hexagon - Primary Rotation */}
           <svg viewBox="0 0 100 100" className="absolute w-1/2 h-1/2 animate-spin-slow opacity-70" style={{ animationDuration: '20s'}}>
             <polygon
               points="50,5 95,27.5 95,72.5 50,95 5,72.5 5,27.5"
@@ -149,7 +302,19 @@ export function VaultSection({ parallaxOffset }: SectionProps) {
               style={{ filter: `drop-shadow(0 0 5px ${centralHexagonColor})`}}
             />
           </svg>
-          
+
+          {/* Central Hexagon - Reverse Rotation Duplicate Border */}
+          <svg viewBox="0 0 100 100" className="absolute w-1/2 h-1/2 animate-spin-slow opacity-70" style={{ animationDuration: '20s', animationDirection: 'reverse'}}>
+            <polygon
+              points="50,5 95,27.5 95,72.5 50,95 5,72.5 5,27.5"
+              stroke={centralHexagonColor}
+              strokeWidth="2"
+              fill="transparent" // Transparent background
+              className="icon-glow" // Assuming icon-glow uses current color for drop shadow
+              style={{ filter: `drop-shadow(0 0 5px ${centralHexagonColor})`}}
+            />
+          </svg>
+
           {/* ELINT Display */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
             <Sigma className="w-8 h-8 md:w-10 md:h-10 text-primary icon-glow opacity-60 mb-1" />
@@ -164,11 +329,11 @@ export function VaultSection({ parallaxOffset }: SectionProps) {
           {[...displayLockSlots, ...displayUpgradeSlots].map((slot, index) => {
             const totalSlots = MAX_LOCK_SLOTS + MAX_UPGRADE_SLOTS;
             const angle = (index / totalSlots) * 360 - 90; // -90 to start at top
-            const radius = '38%'; 
+            const radius = '38%';
             const x = `calc(50% + ${radius} * ${Math.cos(angle * Math.PI / 180)})`;
             const y = `calc(50% + ${radius} * ${Math.sin(angle * Math.PI / 180)})`;
-            
-            const itemDetails = slot.item ? getItemById(slot.item.id) : null;
+
+            const itemDetails = slot.item ? getBaseItemByIdFromGameItems(slot.item.id) : null;
             const itemColor = itemDetails && itemDetails.colorVar ? `hsl(var(${itemDetails.colorVar}))` : 'hsl(var(--muted-hsl))';
             const canClear = slot.item !== null;
 
@@ -177,7 +342,7 @@ export function VaultSection({ parallaxOffset }: SectionProps) {
                 key={slot.id}
                 className={cn(
                   "absolute w-16 h-16 md:w-20 md:h-20 rounded-md border-2 cursor-pointer transition-all hover:scale-110 hover:shadow-lg",
-                  "flex flex-col items-center justify-center text-center" // For item name and clear button
+                  "flex flex-col items-center justify-center text-center"
                 )}
                 style={{
                   left: x,
@@ -185,9 +350,9 @@ export function VaultSection({ parallaxOffset }: SectionProps) {
                   transform: 'translate(-50%, -50%)',
                   borderColor: itemColor,
                   boxShadow: slot.item ? `0 0 10px ${itemColor}, inset 0 0 5px ${itemColor}` : `0 0 5px ${itemColor}`,
-                  backgroundColor: `hsla(var(--card-hsl), 0.7)`, 
+                  backgroundColor: `hsla(0, 0%, 0%, 0.3)`, // 30% transparent black
                 }}
-                onClick={() => handleSlotClick(slot)}
+                onClick={() => slot.item ? handleFilledSlotClick(slot) : handleEmptySlotClick(slot)}
               >
                 {slot.item && itemDetails ? (
                   <>
@@ -195,17 +360,16 @@ export function VaultSection({ parallaxOffset }: SectionProps) {
                     <p className="text-[10px] leading-tight font-semibold" style={{ color: itemColor }}>
                       {itemDetails.name.substring(0,10)}{itemDetails.name.length > 10 ? '...' : ''} L{itemDetails.level}
                     </p>
-                    {/* Clear button - only if item is equipped */}
                     <HolographicButton
                         onClick={(e) => {
                             e.stopPropagation(); // Prevent slot click from firing
-                            handleClearSlot(slot.id);
+                            handleFilledSlotClick(slot);
                         }}
-                        className="!p-0.5 !text-[8px] !h-auto !absolute -top-1 -right-1 !bg-destructive/70 hover:!bg-destructive !border-destructive"
+                        className="!p-0.5 !text-[8px] !h-auto !absolute -top-1 -right-1 !bg-muted/70 hover:!bg-muted !border-muted"
                         explicitTheme={currentGlobalTheme}
-                        title={`Remove ${itemDetails.name}`}
+                        title={`Options for ${itemDetails.name}`}
                     >
-                        X
+                        <MoreVertical className="w-4 h-4" />
                     </HolographicButton>
                   </>
                 ) : slot.type === 'lock' ? (
