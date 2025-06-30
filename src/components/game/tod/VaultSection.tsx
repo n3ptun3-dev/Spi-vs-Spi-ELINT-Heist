@@ -26,7 +26,7 @@ export function VaultSection({ parallaxOffset }: SectionProps) {
     playerVault,
     deployItemToVault,
     playerStats,
-    openItemSliderInTOD,
+    openItemSlider,
     openTODWindow,
     closeTODWindow,
     showConfirmation,
@@ -34,6 +34,7 @@ export function VaultSection({ parallaxOffset }: SectionProps) {
     rechargeItem,
     offloadItem,
     upgradeLock,
+    fortifyLockSlot,
   } = useAppContext();
   const { theme: currentGlobalTheme, themeVersion } = useTheme();
 
@@ -114,9 +115,9 @@ export function VaultSection({ parallaxOffset }: SectionProps) {
                 }));
             });
 
-        openItemSliderInTOD(windowTitle, itemsForSlider, { type: contextType, vaultSlotId: slot.id });
+        openItemSlider(windowTitle, itemsForSlider, { type: contextType, vaultSlotId: slot.id });
     }
-  }, [playerInventory, openItemSliderInTOD, createDisplayItem]);
+  }, [playerInventory, openItemSlider, createDisplayItem]);
 
   const handleClearSlot = useCallback(async (slotId: string) => {
     showConfirmation({
@@ -198,32 +199,79 @@ export function VaultSection({ parallaxOffset }: SectionProps) {
     const currentLockAsDisplayItem = createDisplayItem(slot.item, currentLockDetails);
 
     closeTODWindow();
-    openItemSliderInTOD("Select Upgrade", upgradeCandidates, {
+    openItemSlider("Select Upgrade", upgradeCandidates, {
         type: 'upgrade_lock',
         vaultSlotId: slot.id,
         currentLock: currentLockAsDisplayItem,
     });
-  }, [playerInventory, playerStats.level, openItemSliderInTOD, closeTODWindow, createDisplayItem]);
+  }, [playerInventory, playerStats.level, openItemSlider, closeTODWindow, createDisplayItem]);
+
+  const handleFortifyClick = useCallback((slot: VaultSlot) => {
+        if (!slot.item || slot.fortifier) return;
+
+        const fortifierCandidates: DisplayItem[] = Object.values(playerInventory)
+            .filter(invItem => {
+                const baseItem = getBaseItemByIdFromGameItems(invItem.id);
+                return baseItem && baseItem.category === 'Lock Fortifiers';
+            })
+            .flatMap(invItem => {
+                const baseItem = getBaseItemByIdFromGameItems(invItem.id);
+                if (!baseItem) return [];
+                 return Array.from({ length: invItem.quantity }, (_, i) => ({
+                    ...createDisplayItem(invItem, baseItem),
+                    id: `${invItem.id}_instance_${i}`,
+                }));
+            });
+
+        closeTODWindow();
+        openItemSlider('Select Fortifier', fortifierCandidates, { type: 'fortify_lock', vaultSlotId: slot.id });
+
+    }, [playerInventory, openItemSlider, closeTODWindow, createDisplayItem]);
+
 
   const handleFilledSlotClick = useCallback((e: React.MouseEvent, slot: VaultSlot) => {
       e.stopPropagation();
       if (!slot.item) return;
       const itemDetails = getBaseItemByIdFromGameItems(slot.item.id);
       if (!itemDetails) return;
+      const isHardware = itemDetails.category === 'Hardware';
 
       openTODWindow(
-          itemDetails.name,
+          `${itemDetails.name} L${itemDetails.level}`,
           <div className="flex flex-col gap-3 p-2 font-rajdhani">
-              <HolographicButton onClick={() => handleRechargeClick(slot)} explicitTheme={currentGlobalTheme}>Recharge</HolographicButton>
-              {itemDetails.category === 'Hardware' && (
-                  <HolographicButton onClick={() => handleUpgradeClick(slot)} explicitTheme={currentGlobalTheme}>Upgrade</HolographicButton>
+              <HolographicButton
+                  onClick={() => handleRechargeClick(slot)}
+                  disabled={slot.item.currentStrength === itemDetails.strength?.max}
+                  explicitTheme={currentGlobalTheme}>
+                  {slot.item.currentStrength === itemDetails.strength?.max ? 'Fully Charged' : 'Recharge'}
+              </HolographicButton>
+
+              {isHardware && (
+                  <HolographicButton
+                      onClick={() => handleFortifyClick(slot)}
+                      disabled={!!slot.fortifier}
+                      explicitTheme={currentGlobalTheme}
+                  >
+                      {slot.fortifier ? 'Fortified' : 'Fortify'}
+                  </HolographicButton>
               )}
-              <HolographicButton onClick={() => handleOffloadClick(slot)} className="!border-amber-500 !text-amber-500" explicitTheme={currentGlobalTheme}>Offload</HolographicButton>
-              <HolographicButton onClick={() => handleClearSlot(slot.id)} className="!border-red-500 !text-red-500" explicitTheme={currentGlobalTheme}>Return to Locker</HolographicButton>
+              {isHardware && (
+                  <HolographicButton
+                      onClick={() => handleUpgradeClick(slot)}
+                      explicitTheme={currentGlobalTheme}>
+                      Upgrade
+                  </HolographicButton>
+              )}
+
+              {!isHardware && (
+                  <HolographicButton onClick={() => handleClearSlot(slot.id)} className="!border-red-500 !text-red-500" explicitTheme={currentGlobalTheme}>
+                      Return to Locker
+                  </HolographicButton>
+              )}
           </div>,
           { showCloseButton: true, explicitTheme: currentGlobalTheme, themeVersion }
       );
-  }, [openTODWindow, handleRechargeClick, handleUpgradeClick, handleOffloadClick, handleClearSlot, currentGlobalTheme, themeVersion]);
+  }, [openTODWindow, handleRechargeClick, handleUpgradeClick, handleClearSlot, handleFortifyClick, currentGlobalTheme, themeVersion]);
 
   const centralHexagonColor = faction === 'Cyphers' || faction === 'Shadows' ?
     'hsl(var(--primary-hsl))' : 'hsl(var(--primary-hsl))';
@@ -303,14 +351,14 @@ export function VaultSection({ parallaxOffset }: SectionProps) {
             const y = `calc(50% + ${radius} * ${Math.sin(angle * Math.PI / 180)})`;
 
             const itemDetails = slot.item ? getBaseItemByIdFromGameItems(slot.item.id) : null;
-            const itemColor = itemDetails && itemDetails.colorVar ? `hsl(var(${itemDetails.colorVar}))` : 'hsl(var(--muted-hsl))';
+            const itemColor = itemDetails ? `hsl(${ITEM_LEVEL_COLORS_CSS_VARS[itemDetails.level]})` : 'hsl(var(--muted-hsl))';
             
             return (
               <div
                 key={slot.id}
                 className={cn(
                   "absolute w-16 h-16 md:w-20 md:h-20 rounded-md border-2 cursor-pointer transition-all hover:scale-110 hover:shadow-lg",
-                  "flex flex-col items-center justify-center text-center"
+                  "flex flex-col items-center justify-center text-center overflow-hidden relative"
                 )}
                 style={{
                   left: x,
@@ -324,21 +372,17 @@ export function VaultSection({ parallaxOffset }: SectionProps) {
               >
                 {slot.item && itemDetails ? (
                   <>
-                    <img src={itemDetails.imageSrc || '/placeholder-icon.png'} alt={itemDetails.name} className="w-8 h-8 md:w-10 md:h-10 object-contain mb-0.5" />
-                    <p className="text-[10px] leading-tight font-semibold" style={{ color: itemColor }}>
-                      {itemDetails.name.substring(0,10)}{itemDetails.name.length > 10 ? '...' : ''} L{itemDetails.level}
-                    </p>
-                    <HolographicButton
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handleFilledSlotClick(e, slot);
-                        }}
-                        className="!p-0.5 !text-[8px] !h-auto !absolute -top-1 -right-1 !bg-muted/70 hover:!bg-muted !border-muted"
-                        explicitTheme={currentGlobalTheme}
-                        title={`Options for ${itemDetails.name}`}
-                    >
-                        <MoreVertical className="w-4 h-4" />
-                    </HolographicButton>
+                    <img src={itemDetails.imageSrc || '/placeholder-icon.png'} alt={itemDetails.name} className="absolute inset-0 w-full h-full object-cover" />
+                    {itemDetails.strength && (
+                      <div className="absolute bottom-1 left-1 right-1 h-2 bg-black/50 rounded-full overflow-hidden">
+                        <div className="h-full bg-green-500" style={{ width: `${(slot.item.currentStrength || 0) / itemDetails.strength.max * 100}%`}}></div>
+                      </div>
+                    )}
+                    {slot.fortifier && (
+                      <div className="absolute top-1 right-1 w-6 h-6 rounded-full border-2" style={{borderColor: `hsl(${ITEM_LEVEL_COLORS_CSS_VARS[getBaseItemByIdFromGameItems(slot.fortifier.id)!.level]})`}}>
+                         <img src={getBaseItemByIdFromGameItems(slot.fortifier.id)?.imageSrc} alt="Fortifier" className="w-full h-full object-cover rounded-full" />
+                      </div>
+                    )}
                   </>
                 ) : slot.type === 'lock' ? (
                   <Unlock className="w-6 h-6 md:w-8 md:h-8 icon-glow" style={{color: itemColor}}/>

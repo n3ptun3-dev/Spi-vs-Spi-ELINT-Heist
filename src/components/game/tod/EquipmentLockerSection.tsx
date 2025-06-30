@@ -1,3 +1,4 @@
+
 // src/components/game/tod/EquipmentLockerSection.tsx
 // MODIFIED BY LEXI (2025-06-28): Reverted carousel expansion logic.
 //                                - Clicking a stack now replaces it with its children within the existing carousel,
@@ -13,7 +14,7 @@ import * as THREE from 'three';
 
 // --- Imports from shared components and contexts ---
 import { useAppContext, type GameItemBase, type ItemLevel, type ItemCategory, type PlayerInventoryItem, type DisplayItem } from '@/contexts/AppContext'; // Update import
-import { HolographicButton } from '@/components/game/shared/HolographicPanel';
+import { HolographicButton, HolographicPanel } from '@/components/game/shared/HolographicPanel';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ITEM_LEVEL_COLORS_CSS_VARS } from '@/lib/constants';
@@ -27,7 +28,7 @@ import CardTextureRenderer, { FALLBACK_IMAGE_SRC } from './CardTextureRenderer';
 const ITEM_WIDTH = 0.9;
 const ITEM_HEIGHT = 1.3;
 const CAMERA_BASE_Z_DISTANCE = 2;
-const INITIAL_CAMERA_FOV = 55;
+const INITIAL_CAMERA_FOV = 50;
 const ROTATION_SPEED = 0.0035;
 const SINGLE_ITEM_ROTATION_SPEED = 0.01;
 const CLICK_DRAG_THRESHOLD_SQUARED = 10 * 10;
@@ -516,9 +517,12 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
         interactionState.downTime = performance.now();
         interactionState.downCoords = { x: e.clientX, y: e.clientY };
         
-        const group = e.currentTarget.querySelector('canvas')?.__r3f.scene.getObjectByName('carouselGroup');
-        if (group) {
-             interactionState.lastRotationY = group.rotation.y;
+        const canvas = e.currentTarget.querySelector('canvas');
+        if (canvas && canvas.__r3f && canvas.__r3f.scene) {
+            const group = canvas.__r3f.scene.getObjectByName('carouselGroup');
+            if (group) {
+                interactionState.lastRotationY = group.rotation.y;
+            }
         }
 
     }, [interactionState, stopRotation]);
@@ -532,9 +536,12 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
         }
         if (interactionState.isDragging && carouselDisplayItems.length > 1) {
             const rotationAmount = deltaX * 0.005;
-            const group = e.currentTarget.querySelector('canvas')?.__r3f.scene.getObjectByName('carouselGroup');
-            if (group) {
-                group.rotation.y = interactionState.lastRotationY + rotationAmount;
+            const canvas = e.currentTarget.querySelector('canvas');
+            if (canvas && canvas.__r3f && canvas.__r3f.scene) {
+                const group = canvas.__r3f.scene.getObjectByName('carouselGroup');
+                if (group) {
+                    group.rotation.y = interactionState.lastRotationY + rotationAmount;
+                }
             }
         }
     }, [interactionState, carouselDisplayItems.length]);
@@ -553,9 +560,11 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
         
         if (!wasDragging && dragDuration < CLICK_DURATION_THRESHOLD) {
             const canvas = e.currentTarget.querySelector('canvas');
-            if (!canvas) { resumeRotation(); return; }
+            if (!canvas || !canvas.__r3f || !canvas.__r3f.scene) { resumeRotation(); return; }
 
             const { camera, scene, raycaster } = canvas.__r3f;
+            if (!camera || !scene || !raycaster) { resumeRotation(); return; }
+            
             const rect = canvas.getBoundingClientRect();
             const pointerVector = new THREE.Vector2(
                 ((e.clientX - rect.left) / rect.width) * 2 - 1,
@@ -578,54 +587,51 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
     }, [interactionState, resumeRotation, handleCarouselItemClick]);
 
     return (
-        <div ref={sectionRef} className="flex flex-col h-full p-4 md:p-6">
-            <div className="relative w-full h-full flex flex-col items-center justify-center">
-                <div
-                    id="locker-carousel-canvas-container"
-                    className={cn( "w-full h-full relative z-10 flex flex-col justify-center items-center overflow-hidden" )}
-                    style={{ cursor: 'grab', touchAction: 'none' }}
-                    onPointerDown={handlePointerDown}
-                    onPointerMove={handlePointerMove}
-                    onPointerUp={handlePointerUp}
-                    onPointerCancel={handlePointerUp}
-                >
-                    <div className="absolute top-0 left-0 w-full z-20 flex items-center justify-between p-3 md:p-4 pointer-events-none">
-                        <h2 className="text-2xl font-orbitron holographic-text">
-                            Equipment Locker
-                        </h2>
-                        <div className="pointer-events-auto">
-                           <HolographicButton onClick={handleOpenSpyShop} className="!p-2" aria-label="Open Spy Shop" explicitTheme={currentGlobalTheme}>
-                                <ShoppingCart className="w-5 h-5 icon-glow" />
-                            </HolographicButton>
-                        </div>
-                    </div>
-                    {carouselDisplayItems.length > 0 ? (
-                        <Canvas
-                            id="locker-carousel-canvas"
-                            camera={{ position: [0, 0, CAMERA_BASE_Z_DISTANCE], fov: 50 }}
-                            gl={gl}
-                            style={{ background: 'transparent' }}
-                            onCreated={({ gl }) => { gl.setClearColor(0x000000, 0); }}
-                        >
-                            <ambientLight intensity={1.2} />
-                            <directionalLight position={[5, 5, 5]} intensity={0.8} />
-                            <pointLight position={[-5, 5, 15]} intensity={1.5} color={pointLightColor} />
-                            <pointLight position={[0, -10, 0]} intensity={0.3} />
-                            <CameraManager carouselRadius={dynamicCarouselRadius} />
-                            <EquipmentCarousel itemsToDisplay={carouselDisplayItems} onItemClick={handleCarouselItemClick} carouselRadius={dynamicCarouselRadius} autoRotateRef={autoRotateRef} />
-                            <Resizer />
-                        </Canvas>
-                    ) : (
-                        <div className="flex flex-col items-center justify-center h-full">
-                            <p className="holographic-text text-lg">Locker Empty</p>
-                            <p className="text-muted-foreground text-sm">Visit the Spy Shop or Check In with HQ.</p>
-                        </div>
-                    )}
-                    <p className="absolute bottom-0 left-0 w-full z-20 text-center text-xs text-muted-foreground p-3 md:p-4 pointer-events-none">
-                        {carouselDisplayItems.length > 0 ? "Drag to rotate. Click stack to expand or item for details." : ""}
-                    </p>
-                </div>
-            </div>
+        <div ref={sectionRef} className="flex flex-col items-center justify-center h-full w-full p-4">
+            <HolographicPanel
+                  className="w-full h-full flex flex-col items-center px-0 py-2 md:py-4 overflow-hidden"
+                  explicitTheme={currentGlobalTheme}>
+                  <div className="flex-shrink-0 w-full flex items-center justify-between px-2 my-2 md:my-3">
+                      <div className="w-9 h-9"></div> 
+                      <h2 className="text-xl md:text-2xl font-orbitron holographic-text text-center flex-grow whitespace-nowrap overflow-hidden text-ellipsis px-2">
+                          Equipment Locker
+                      </h2>
+                      <HolographicButton onClick={handleOpenSpyShop} className="!p-2" aria-label="Open Spy Shop" explicitTheme={currentGlobalTheme}>
+                          <ShoppingCart className="w-5 h-5 icon-glow" />
+                      </HolographicButton>
+                  </div>
+                  <div
+                      id="locker-carousel-canvas-container"
+                      className="w-full flex-grow min-h-0 relative"
+                      style={{ cursor: 'grab', touchAction: 'none' }} 
+                      onPointerDown={handlePointerDown}
+                      onPointerMove={handlePointerMove}
+                      onPointerUp={handlePointerUp}
+                      onPointerCancel={handlePointerUp}>
+                      {carouselDisplayItems.length > 0 ? (
+                          <Canvas
+                              id="locker-carousel-canvas" camera={{ position: [0, 0, CAMERA_BASE_Z_DISTANCE], fov: INITIAL_CAMERA_FOV }}
+                              shadows gl={{ antialias: true, alpha: true }} style={{ background: 'transparent' }}
+                              onCreated={({ gl }) => { gl.setClearColor(0x000000, 0); }} >
+                              <ambientLight intensity={1.2} />
+                              <directionalLight position={[5, 5, 5]} intensity={0.8} castShadow />
+                              <pointLight position={[-5, 5, 15]} intensity={1.5} color={pointLightColor} />
+                              <pointLight position={[0, -10, 0]} intensity={0.3} />
+                              <CameraManager carouselRadius={dynamicCarouselRadius} />
+                              <EquipmentCarousel itemsToDisplay={carouselDisplayItems} onItemClick={handleCarouselItemClick} carouselRadius={dynamicCarouselRadius} autoRotateRef={autoRotateRef} />
+                              <Resizer />
+                          </Canvas>
+                      ) : (
+                          <div className="flex flex-col items-center justify-center h-full">
+                              <p className="holographic-text text-lg">Locker Empty</p>
+                              <p className="text-muted-foreground text-sm">Visit the Spy Shop or Check In with HQ.</p>
+                          </div>
+                      )}
+                  </div>
+                   <p className="text-center text-xs text-muted-foreground mt-2 flex-shrink-0 px-2">
+                      {carouselDisplayItems.length > 0 ? "Drag to rotate. Click stack to expand or item for details." : ""}
+                  </p>
+            </HolographicPanel>
         </div>
     );
 };

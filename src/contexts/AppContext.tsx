@@ -30,6 +30,7 @@ import { HolographicPanel, HolographicButton } from '@/components/game/shared/Ho
 // --- NEW IMPORTS ---
 import type { ConfirmationPopupProps } from '@/components/game/shared/ConfirmationPopup';
 import { ItemSliderInTOD } from '@/components/game/item-browser/ItemSliderInTOD';
+import { ItemCard } from '@/components/game/item-browser/ItemCard';
 
 
 // Now, if other components (like EquipmentLockerSection or CardTextureRenderer) need these types,
