@@ -2,7 +2,7 @@
 "use client";
 
 import React from 'react';
-import { HolographicButton, HolographicPanel } from '../shared/HolographicPanel';
+import { HolographicButton } from '../shared/HolographicPanel';
 import { cn } from '@/lib/utils';
 import { useAppContext, type DisplayItem, type ItemWindowContext } from '@/contexts/AppContext';
 import { Recycle } from 'lucide-react';
@@ -101,7 +101,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
     const renderButtons = () => {
         switch (context.type) {
             case 'locker':
-                const isRechargeable = baseItem?.durability === 'Rechargeable' || baseItem?.type === 'Rechargeable' || baseItem?.category === 'Hardware';
+                 const isRechargeable = baseItem?.durability === 'Rechargeable' || baseItem?.type === 'Rechargeable' || baseItem?.category === 'Hardware' || baseItem?.category === 'Nexus Upgrades';
                 const isFull = instanceCurrentStrength === instanceMaxStrength || instanceCurrentCharges === instanceMaxCharges || instanceCurrentAlerts === instanceMaxAlerts || instanceCurrentUses === instanceMaxUses;
 
                 return (
@@ -109,7 +109,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
                         <HolographicButton onClick={handleOffload} className="!p-2">
                             <Recycle className="w-5 h-5" />
                         </HolographicButton>
-                        {isRechargeable && baseItem.type !== 'One-Time Use' && (
+                        {isRechargeable && baseItem.type !== 'One-Time Use' && baseItem.type !== 'Permanent' && (
                             <HolographicButton onClick={handleRecharge} disabled={isFull} className="flex-grow">
                                 {isFull ? 'Fully Charged' : 'Recharge'}
                             </HolographicButton>
@@ -123,49 +123,52 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
                 return <div className="p-2"><HolographicButton onClick={handleUpgrade} className="w-full">Select for Upgrade</HolographicButton></div>;
             case 'infiltrate':
                 return <div className="p-2"><HolographicButton onClick={() => { /* Infiltrate logic */ onClose(); }} className="w-full">Use for Infiltration</HolographicButton></div>;
+            case 'fortify_lock':
+                 return <div className="p-2"><HolographicButton onClick={() => { /* Fortify logic */ }} className="w-full">Fortify</HolographicButton></div>;
             default:
                 return null;
         }
     };
     
-    const themeColor = `hsl(${colorVar})`;
-    const levelColorVar = ITEM_LEVEL_COLORS_CSS_VARS[levelForVisuals] || ITEM_LEVEL_COLORS_CSS_VARS[1];
+    const levelColor = ITEM_LEVEL_COLORS_CSS_VARS[levelForVisuals] || ITEM_LEVEL_COLORS_CSS_VARS[1];
+    const levelColorHsl = levelColor.startsWith('var') ? `hsl(${levelColor})` : levelColor;
 
     return (
-        <div className="w-full h-full flex items-center justify-center p-4">
-            <div className="w-full h-full rounded-xl flex flex-col overflow-hidden bg-black/50 border-2" style={{ borderColor: `hsl(${levelColorVar})`, aspectRatio: '4 / 6' }}>
+        <div className="w-full h-full flex items-center justify-center p-0">
+             <div 
+                className={cn("w-full h-full flex flex-col overflow-hidden rounded-xl border-2 bg-black/50", `bg-level-${levelForVisuals}/20`)} 
+                style={{ 
+                    borderColor: levelColorHsl, 
+                    aspectRatio: '4 / 6' 
+                }}
+            >
                 <ScrollArea className="flex-grow w-full h-full">
-                    {/* Image */}
-                    <div className="w-full aspect-[4/3] bg-black/30">
+                    <div className="w-full aspect-[4/3] bg-black/30 relative">
                         <img src={imageSrc} alt={title} className="w-full h-full object-contain" />
                     </div>
 
                     <div className="p-3 space-y-3 font-rajdhani">
-                        {/* Title */}
-                        <h2 className="text-2xl font-orbitron text-center truncate" style={{ color: themeColor }}>
+                        <h2 className="text-2xl font-orbitron text-center" style={{ color: levelColorHsl, wordWrap: 'break-word' }}>
                             {title}
                         </h2>
 
-                        {/* Progress/Text Area */}
-                        <div className="min-h-[4rem] flex flex-col justify-center items-center space-y-1">
+                        <div className="min-h-[4rem] flex flex-col justify-center items-center space-y-1 p-1">
                             {displayTextLabel ? (
                                  <p className="text-center font-semibold text-muted-foreground">{displayTextLabel}</p>
                             ) : (
                                 <>
-                                    {instanceMaxStrength && <ItemProgressBar label="Strength" current={instanceCurrentStrength || 0} max={instanceMaxStrength} colorVar={levelColorVar} />}
-                                    {instanceMaxCharges && <ItemProgressBar label="Charges" current={instanceCurrentCharges || 0} max={instanceMaxCharges} colorVar={levelColorVar} />}
-                                    {instanceMaxUses && <ItemProgressBar label="Uses" current={instanceCurrentUses || 0} max={instanceMaxUses} colorVar={levelColorVar} />}
-                                    {instanceMaxAlerts && <ItemProgressBar label="Alerts" current={instanceCurrentAlerts || 0} max={instanceMaxAlerts} colorVar={levelColorVar} />}
+                                    {instanceMaxStrength && <ItemProgressBar label="Strength" current={instanceCurrentStrength || 0} max={instanceMaxStrength} colorVar={colorVar} />}
+                                    {instanceMaxCharges && <ItemProgressBar label="Charges" current={instanceCurrentCharges || 0} max={instanceMaxCharges} colorVar={colorVar} />}
+                                    {instanceMaxUses && <ItemProgressBar label="Uses" current={instanceCurrentUses || 0} max={instanceMaxUses} colorVar={colorVar} />}
+                                    {instanceMaxAlerts && <ItemProgressBar label="Alerts" current={instanceCurrentAlerts || 0} max={instanceMaxAlerts} colorVar={colorVar} />}
                                 </>
                             )}
                         </div>
 
-                        {/* Buttons */}
                         <div className="py-2">
                           {renderButtons()}
                         </div>
                         
-                        {/* Detailed Info */}
                         <div className="space-y-2 text-sm text-muted-foreground border-t border-border/50 pt-3">
                             <p>{baseItem?.description}</p>
                             {baseItem?.strength && <p><span className="font-semibold text-foreground">Strength:</span> {baseItem.strength.max}</p>}

@@ -14,7 +14,7 @@ export interface Player {
   faction: Faction;
   stats: PlayerStats;
   inventory: PlayerInventory; // Record<itemId, PlayerInventoryItem>
-  vault: VaultSlot[]; // Array of VaultSlot
+  vault: VaultSlot[];
 }
 
 
@@ -37,14 +37,10 @@ const DEFAULT_PLAYER_STATS_FOR_NEW_PLAYER: PlayerStats = {
 };
 
 export function initializePlayerData(): void {
-  // Type assertion for initialDb if its structure is known and complex
-  const dbTyped = initialDb as any; // Use 'any' or a more specific type for db.json content
+  const dbTyped = initialDb as any;
   
-  // Check if db.json has multiple entries due to concatenation and take the last valid one
   let validDbData = dbTyped;
   if (Array.isArray(dbTyped) && dbTyped.length > 0 && typeof dbTyped[0] !== 'object') {
-    // This handles the case where db.json might be a string of concatenated JSON objects
-    // A more robust solution would be to ensure db.json is always a single valid JSON object
     console.warn("db.json appears to be malformed (concatenated JSON strings). Attempting to parse the last valid part.");
     const jsonObjects = (initialDb as unknown as string).split('}{').map((s, i, arr) => {
       if (i === 0 && arr.length > 1) return s + '}';
@@ -71,18 +67,18 @@ export function initializePlayerData(): void {
 }
 
 export async function getPlayer(playerId: string): Promise<Player | null> {
-  await new Promise(resolve => setTimeout(resolve, 50)); // Simulate async
+  await new Promise(resolve => setTimeout(resolve, 50));
   const player = playersStore.find(p => p.id === playerId);
-  return player ? { ...player } : null; // Return a copy
+  return player ? { ...player } : null;
 }
 
 export async function createPlayer(
   playerId: string,
   faction: Faction,
-  initialStats?: PlayerStats, // Make initialStats optional, use default if not provided
+  initialStats?: PlayerStats,
   initialSpyName: string | null = null
 ): Promise<Player> {
-  await new Promise(resolve => setTimeout(resolve, 50)); // Simulate async
+  await new Promise(resolve => setTimeout(resolve, 50));
   if (await getPlayer(playerId)) {
     throw new Error(`Player with ID ${playerId} already exists.`);
   }
@@ -90,40 +86,37 @@ export async function createPlayer(
     id: playerId,
     spyName: initialSpyName,
     faction: faction,
-    stats: initialStats || { ...DEFAULT_PLAYER_STATS_FOR_NEW_PLAYER }, // Use default if not provided
+    stats: initialStats || { ...DEFAULT_PLAYER_STATS_FOR_NEW_PLAYER },
     inventory: {
       'cypher_lock_l1': { id: 'cypher_lock_l1', quantity: 4},
       'reinforced_deadbolt_l1': { id: 'reinforced_deadbolt_l1', quantity: 1 }
     },
-    vault: Array(8).fill(null).map((_, i) => ({ // Initialize with 8 empty slots (4 lock, 4 upgrade)
+    vault: Array(8).fill(null).map((_, i) => ({
       id: i < 4 ? `lock_slot_${i}` : `upgrade_slot_${i - 4}`,
       type: i < 4 ? 'lock' : 'upgrade',
       item: null,
+      fortifier: null,
     })),
   };
   playersStore.push(newPlayer);
-  // Here you would typically also save to your db.json or actual backend
-  return { ...newPlayer }; // Return a copy
+  return { ...newPlayer };
 }
 
 export async function updatePlayer(updatedPlayer: Player): Promise<Player | null> {
-  await new Promise(resolve => setTimeout(resolve, 50)); // Simulate async
+  await new Promise(resolve => setTimeout(resolve, 50));
   const playerIndex = playersStore.findIndex(p => p.id === updatedPlayer.id);
   if (playerIndex !== -1) {
-    playersStore[playerIndex] = { ...updatedPlayer }; // Store a copy
-    // Here you would typically also save to your db.json or actual backend
-    return { ...playersStore[playerIndex] }; // Return a copy
+    playersStore[playerIndex] = { ...updatedPlayer };
+    return { ...playersStore[playerIndex] };
   }
   return null;
 }
 
-// Example: Simulate getting all game items (replace with actual item fetching if needed)
 export async function getAllGameItems(): Promise<any[]> {
     await new Promise(resolve => setTimeout(resolve, 50));
     return [...itemsStore];
 }
 
-// Simulate getting dropped items
 export async function getDroppedItems(): Promise<any[]> {
     await new Promise(resolve => setTimeout(resolve, 50));
     return [...droppedItemsStore];
@@ -132,11 +125,7 @@ export async function getDroppedItems(): Promise<any[]> {
 export async function addDroppedItem(item: any): Promise<void> {
     await new Promise(resolve => setTimeout(resolve, 50));
     droppedItemsStore.push(item);
-    // Save to db.json or backend
 }
 
-// Initialize on load (though AppContext also calls this)
-if (typeof window !== 'undefined') { // Ensure this only runs client-side if it manipulates client stores directly
-    // initializePlayerData(); 
-    // Deferring initialization to AppContext to ensure it's ready when context is first used.
+if (typeof window !== 'undefined') {
 }

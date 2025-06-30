@@ -342,7 +342,7 @@ export default function HomePage() {
 
       <TODWindow
         key={`${faction}-${todWindowOptions.explicitTheme || currentThemeContextTheme}-${todWindowOptions.themeVersion || themeVersion}-tod-${isTODWindowOpen}-${todInventoryContext ? 'inv-open' : 'inv-closed'}`}
-        isOpen={isTODWindowOpen && !todInventoryContext}
+        isOpen={isTODWindowOpen}
         onClose={closeTODWindow}
         title={todWindowTitle}
         explicitTheme={todWindowOptions.explicitTheme || currentThemeContextTheme}
@@ -351,20 +351,6 @@ export default function HomePage() {
       >
         {todWindowContent}
       </TODWindow>
-
-      {todInventoryContext && (
-        <TODWindow
-          key={`${faction}-${todWindowOptions.explicitTheme || currentThemeContextTheme}-${todWindowOptions.themeVersion || themeVersion}-inventory-${todInventoryContext.category}-${isTODWindowOpen}`}
-          isOpen={!!todInventoryContext}
-          onClose={closeInventoryTOD}
-          title={todInventoryContext.title}
-          explicitTheme={todWindowOptions.explicitTheme || currentThemeContextTheme}
-          themeVersion={todWindowOptions.themeVersion || themeVersion}
-          showCloseButton={true}
-        >
-          <InventoryBrowserInTOD context={todInventoryContext} />
-        </TODWindow>
-      )}
     </main>
   );
 }

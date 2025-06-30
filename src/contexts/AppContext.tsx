@@ -17,7 +17,7 @@ import {
   type Player,
 } from '@/lib/player-data';
 // Directly import all necessary types from game-items.ts for internal use in AppContext.tsx
-import { getItemById, type VaultSlot, type HardwareItem, type InfiltrationGearItem, type ItemCategory, type GameItemBase, type ItemLevel, type PlayerInventoryItem, type LockFortifierItem, ALL_ITEMS_BY_CATEGORY } from '@/lib/game-items';
+import { getItemById, type HardwareItem, type InfiltrationGearItem, type ItemCategory, type GameItemBase, type ItemLevel, type PlayerInventoryItem, type LockFortifierItem, ALL_ITEMS_BY_CATEGORY } from '@/lib/game-items';
 
 import { CodenameInput } from '@/components/game/onboarding/CodenameInput';
 // Import the new master minigame mechanics
@@ -60,6 +60,14 @@ export interface PlayerStats {
   hasPlacedFirstLock: boolean;
 }
 
+export interface VaultSlot {
+  id: string; // e.g., 'lock_slot_0', 'upgrade_slot_1'
+  type: 'lock' | 'upgrade';
+  item: PlayerInventoryItem | null; // The actual item instance deployed here
+  fortifier?: PlayerInventoryItem | null;
+}
+
+
 export interface DisplayItem {
   id: string;
   baseItem: GameItemBase | null;
@@ -96,6 +104,7 @@ export type ItemWindowContext =
   | { type: 'deploy_nexus'; vaultSlotId: string }
   | { type: 'deploy_lock'; vaultSlotId: string }
   | { type: 'upgrade_lock'; vaultSlotId: string; currentLock: DisplayItem }
+  | { type: 'fortify_lock'; vaultSlotId: string }
   | { type: 'infiltrate'; opponentVaultId: string };
 
 
@@ -200,8 +209,7 @@ interface AppContextType {
   openMinigame: (lock: HardwareItem, attackingTool: InfiltrationGearItem, fortifiers?: LockFortifierItem[]) => void;
   closeMinigame: (success: boolean, strengthReduced: number, toolDamageAmount?: number) => void;
 
-  // --- NEW CONTEXT VALUES ---
-  openItemSliderInTOD: (title: string, items: DisplayItem[], context: ItemWindowContext, initialIndex?: number) => void;
+  openItemSlider: (title: string, items: DisplayItem[], context: ItemWindowContext) => void;
   
   opponentVaultState: OpponentVaultState;
   openOpponentVault: (opponentId: string) => void;
@@ -211,10 +219,10 @@ interface AppContextType {
   showConfirmation: (props: ConfirmationState) => void;
   hideConfirmation: () => void;
 
-  // New actions
   rechargeItem: (itemId: string, vaultSlotId?: string) => Promise<boolean>;
   offloadItem: (itemId: string) => Promise<boolean>;
   upgradeLock: (vaultSlotId: string, newItemId: string) => Promise<boolean>;
+  fortifyLockSlot: (vaultSlotId: string, fortifierId: string) => Promise<boolean>;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -257,7 +265,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const [_activeMinigame, _setActiveMinigame] = useState<MinigameArguments | null>(null);
 
-  // --- NEW STATES ---
   const [_opponentVaultState, _setOpponentVaultState] = useState<OpponentVaultState>({ isOpen: false, opponentId: null });
   const [_confirmationState, _setConfirmationState] = useState<ConfirmationState>(null);
 
@@ -286,7 +293,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const openTODWindow = useCallback((title: string, content: ReactNode, options: TODWindowOptions = {}) => {
     _setTODWindowTitle(title);
     _setTODWindowContent(content);
-    // CRITICAL FIX: Ensure todInventoryContext is null when opening a general TOD window
     _setTodInventoryContext(null);
     const defaultShowCloseButton = options.showCloseButton === undefined ? true : options.showCloseButton;
     const themeToUseForWindow = options.explicitTheme || currentGlobalTheme || 'terminal-green';
@@ -297,8 +303,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         themeVersion: versionToUseForWindow
     });
     _setIsTODWindowOpen(true);
-    _setIsScrollLockActive(true); // Lock scroll when any TOD window opens
-  }, [currentGlobalTheme, themeVersion, _setTodInventoryContext]); // Added _setTodInventoryContext to dependencies
+    _setIsScrollLockActive(true);
+  }, [currentGlobalTheme, themeVersion]);
 
   const attemptLoginWithPiId = useCallback(async (piId: string) => {
     _setIsLoading(true);
@@ -379,9 +385,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           _setCurrentPlayer(player);
           if (player.faction === 'Observer') {
             _setOnboardingStep('tod');
-          } else { // Removed player.spyName check here
-             _setOnboardingStep('fingerprint'); // Assuming all non-observers go to fingerprint or codename
-             if (!player.spyName) { // If no spyName, go to codename input
+          } else {
+             _setOnboardingStep('fingerprint');
+             if (!player.spyName) {
                  const factionThemeForCodename = player.faction === 'Cyphers' ? 'cyphers' : player.faction === 'Shadows' ? 'shadows' : currentGlobalTheme;
                  openTODWindow(
                   "Agent Codename",
@@ -467,7 +473,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   ) => {
     if (_currentPlayer) {
       const newInventory = { ..._currentPlayer.inventory };
-      // Get base item to infer max values for new items, if not provided in itemDetails
       const baseItem = getItemById(itemId);
       const initialStrength = itemDetails?.currentStrength ?? baseItem?.strength?.max;
       const initialUses = itemDetails?.currentUses ?? baseItem?.maxUses;
@@ -476,19 +481,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (newInventory[itemId]) {
         newInventory[itemId].quantity += quantity;
-        // Only update current properties if they are undefined (i.e., not explicitly set)
-        if (initialStrength !== undefined && newInventory[itemId].currentStrength === undefined) {
-          newInventory[itemId].currentStrength = initialStrength;
-        }
-        if (initialUses !== undefined && newInventory[itemId].currentUses === undefined) {
-          newInventory[itemId].currentUses = initialUses;
-        }
-        if (initialAlerts !== undefined && newInventory[itemId].currentAlerts === undefined) {
-          newInventory[itemId].currentAlerts = initialAlerts;
-        }
-        if (initialCharges !== undefined && newInventory[itemId].currentCharges === undefined) {
-          newInventory[itemId].currentCharges = initialCharges;
-        }
+        if (initialStrength !== undefined && newInventory[itemId].currentStrength === undefined) newInventory[itemId].currentStrength = initialStrength;
+        if (initialUses !== undefined && newInventory[itemId].currentUses === undefined) newInventory[itemId].currentUses = initialUses;
+        if (initialAlerts !== undefined && newInventory[itemId].currentAlerts === undefined) newInventory[itemId].currentAlerts = initialAlerts;
+        if (initialCharges !== undefined && newInventory[itemId].currentCharges === undefined) newInventory[itemId].currentCharges = initialCharges;
       } else {
         newInventory[itemId] = {
           id: itemId,
@@ -528,7 +524,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return false;
     }
     if (await spendElint(itemData.cost)) {
-      // When purchasing, set initial current strength/uses/alerts/charges based on the item's max
       const initialItemDetails: Partial<Omit<PlayerInventoryItem, 'id' | 'quantity'>> = {};
       if (itemData.strength?.max !== undefined) initialItemDetails.currentStrength = itemData.strength.max;
       if (itemData.maxUses !== undefined) initialItemDetails.currentUses = itemData.maxUses;
@@ -547,33 +542,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!_currentPlayer) return;
     let itemBeingDeployed: GameItemBase | undefined = undefined;
     let itemBeingRemovedFromSlot: PlayerInventoryItem | null = null;
-    // Deep clone to ensure immutability before modification
     const newInventory = JSON.parse(JSON.stringify(_currentPlayer.inventory));
     const newVault = JSON.parse(JSON.stringify(_currentPlayer.vault));
     const slotIndex = newVault.findIndex((slot: VaultSlot) => slot.id === slotId);
 
-    if (slotIndex === -1) {
-      addMessage({ text: `Vault slot ${slotId} not found.`, type: 'error' }); return;
-    }
+    if (slotIndex === -1) { addMessage({ text: `Vault slot ${slotId} not found.`, type: 'error' }); return; }
 
-    itemBeingRemovedFromSlot = newVault[slotIndex].item; // Get item currently in the slot
+    itemBeingRemovedFromSlot = newVault[slotIndex].item;
 
     if (itemIdToDeploy) {
       itemBeingDeployed = getItemById(itemIdToDeploy);
       if (!itemBeingDeployed) { addMessage({ text: `Item ${itemIdToDeploy} not found.`, type: 'error' }); return; }
-      if (!newInventory[itemIdToDeploy] || newInventory[itemIdToDeploy].quantity <= 0) {
-        addMessage({ text: `Cannot deploy ${itemBeingDeployed.name}: Not in inventory.`, type: 'error' }); return;
-      }
+      if (!newInventory[itemIdToDeploy] || newInventory[itemIdToDeploy].quantity <= 0) { addMessage({ text: `Cannot deploy ${itemBeingDeployed.name}: Not in inventory.`, type: 'error' }); return; }
 
-      // When deploying, the item comes with its current instance-specific stats from inventory
       const deployedItemInstance: PlayerInventoryItem = {
         id: itemBeingDeployed.id,
-        quantity: 1, // Always deploy 1 unit
+        quantity: 1,
         currentStrength: newInventory[itemIdToDeploy].currentStrength,
         currentUses: newInventory[itemIdToDeploy].currentUses,
         currentAlerts: newInventory[itemIdToDeploy].currentAlerts,
         currentCharges: newInventory[itemIdToDeploy].currentCharges,
-        // Max values from base item definition (these are usually static)
         maxUses: itemBeingDeployed.maxUses,
         maxAlerts: itemBeingDeployed.maxAlerts,
         maxCharges: itemBeingDeployed.maxCharges,
@@ -583,21 +571,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       newInventory[itemIdToDeploy].quantity -= 1;
       if (newInventory[itemIdToDeploy].quantity <= 0) delete newInventory[itemIdToDeploy];
     } else {
-      // If itemIdToDeploy is null, it means we are clearing the slot
       newVault[slotIndex].item = null;
     }
 
-    // Return the item that was in the slot back to inventory
     if (itemBeingRemovedFromSlot) {
       if (newInventory[itemBeingRemovedFromSlot.id]) {
-        // If item already exists in inventory, just increase quantity
         newInventory[itemBeingRemovedFromSlot.id].quantity += itemBeingRemovedFromSlot.quantity;
       } else {
-        // If not, add the item back with its full instance properties (e.g., current strength)
-        newInventory[itemBeingRemovedFromSlot.id] = {
-            ...itemBeingRemovedFromSlot,
-            quantity: itemBeingRemovedFromSlot.quantity,
-        };
+        newInventory[itemBeingRemovedFromSlot.id] = { ...itemBeingRemovedFromSlot };
       }
     }
 
@@ -629,7 +610,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                         : currentGlobalTheme || 'terminal-green';
     openTODWindow(
       context?.title || "Inventory",
-      <div>Inventory Browser for {context?.category} - {context?.title}</div>, // Placeholder, will be replaced by InventoryBrowserInTOD
+      <div>Inventory Browser for {context?.category} - {context?.title}</div>,
       { explicitTheme: resolvedTheme, themeVersion: themeVersion, showCloseButton: true }
     );
   }, [_currentPlayer, currentGlobalTheme, themeVersion, openTODWindow]);
@@ -646,13 +627,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       spyName: _currentPlayer.spyName,
       faction: _currentPlayer.faction,
       stats: { level: _currentPlayer.stats.level, elintReserves: _currentPlayer.stats.elintReserves },
-    } as Player; // Cast needed if Player type expects more stats for shop specifically
+    } as Player;
   }, [_currentPlayer]);
 
-  // --- Minigame Logic ---
   const openMinigame = useCallback((lock: HardwareItem, attackingTool: InfiltrationGearItem, fortifiers: LockFortifierItem[] = []) => {
-    // Determine which minigame to load based on the lock type
-    const minigameArgs = getMinigameForLock(lock, attackingTool, fortifiers); // Pass attackingTool and fortifiers
+    const minigameArgs = getMinigameForLock(lock, attackingTool, fortifiers);
     _setActiveMinigame(minigameArgs);
   }, []);
 
@@ -660,7 +639,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (_activeMinigame && _currentPlayer) {
       let updatedPlayer = { ..._currentPlayer };
 
-      // 1. Update Lock Strength in Vault
       const newVault = updatedPlayer.vault.map(slot => {
         if (slot.item?.id === _activeMinigame.lockData.id && slot.item.currentStrength !== undefined) {
           const updatedStrength = Math.max(0, slot.item.currentStrength - strengthReduced);
@@ -670,7 +648,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       updatedPlayer = { ...updatedPlayer, vault: newVault };
 
-      // 2. Apply Tool Damage (if any)
       if (toolDamageAmount > 0 && _activeMinigame.props && 'attackingTool' in _activeMinigame.props && _activeMinigame.props.attackingTool) {
         const toolInPlay = _activeMinigame.props.attackingTool as InfiltrationGearItem;
         const newInventory = { ...updatedPlayer.inventory };
@@ -680,7 +657,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           toolInstance.currentUses = Math.max(0, toolInstance.currentUses - toolDamageAmount);
           addMessage({ text: `${toolInPlay.name} durability reduced by ${toolDamageAmount}. Remaining uses: ${toolInstance.currentUses}.`, type: 'alert' });
 
-          // If tool runs out of uses, remove it
           if (toolInstance.currentUses <= 0) {
             delete newInventory[toolInPlay.id];
             addMessage({ text: `${toolInPlay.name} is depleted and removed from inventory.`, type: 'error' });
@@ -701,23 +677,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
           });
         } else {
           addMessage({ text: `Failed to bypass ${_activeMinigame.lockData.name}. Infiltration aborted.`, type: 'error' });
-          // TODO: Implement other failure penalties, e.g., ELINT loss, cooldowns
         }
       } else {
-        // Handle case where player update failed
         addMessage({ text: `Error updating player data after minigame.`, type: 'error' });
       }
     }
-    _setActiveMinigame(null); // Close the minigame
+    _setActiveMinigame(null);
   }, [_activeMinigame, _currentPlayer, addMessage, updatePlayerStatsAppContext]);
 
-  // --- NEW FUNCTIONS ---
-  const openItemSliderInTOD = useCallback((title: string, items: DisplayItem[], context: ItemWindowContext, initialIndex: number = 0) => {
+  const openItemSlider = useCallback((title: string, items: DisplayItem[], context: ItemWindowContext) => {
       const content = (
           <ItemSliderInTOD
               items={items}
               context={context}
-              initialIndex={initialIndex}
               onClose={closeTODWindow}
           />
       );
@@ -742,12 +714,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     _setConfirmationState(null);
   }, []);
 
-  // --- NEW ITEM ACTIONS ---
   const rechargeItem = useCallback(async (itemId: string, vaultSlotId?: string): Promise<boolean> => {
     if (!_currentPlayer) return false;
 
     const baseItem = getItemById(itemId);
-    const rechargeCost = baseItem?.rechargeCost ?? 50; // Use a default or get from item
+    const rechargeCost = baseItem?.rechargeCost ?? 50;
 
     if (!(await spendElint(rechargeCost))) {
         addMessage({ type: 'error', text: 'Insufficient ELINT for recharge.' });
@@ -757,14 +728,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let playerAfterUpdate: Player | null = null;
 
     if (vaultSlotId) {
-        // Recharge item in vault
         const newVault = _currentPlayer.vault.map(slot => {
             if (slot.id === vaultSlotId && slot.item?.id === itemId && baseItem) {
                 return {
                     ...slot,
                     item: {
                         ...slot.item,
-                        // Reset all relevant "current" stats to their "max"
                         currentStrength: baseItem.strength?.max,
                         currentCharges: baseItem.maxCharges,
                         currentAlerts: baseItem.maxAlerts,
@@ -776,7 +745,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
         playerAfterUpdate = await updatePlayer({ ..._currentPlayer, vault: newVault });
     } else {
-        // Recharge item in inventory
         const newInventory = { ..._currentPlayer.inventory };
         if (newInventory[itemId] && baseItem) {
             newInventory[itemId] = {
@@ -801,10 +769,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const offloadItem = useCallback(async (itemId: string): Promise<boolean> => {
     if (!_currentPlayer) return false;
 
-    // For now, just remove from inventory
     await removeItemFromInventory(itemId, 1);
     addMessage({ type: 'system', text: 'Item offloaded and removed from inventory.'});
-    // TODO: Add to a global "dropped items" list for the scanner
     return true;
   }, [_currentPlayer, removeItemFromInventory, addMessage]);
 
@@ -815,37 +781,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newInventory = {..._currentPlayer.inventory};
     const slotIndex = newVault.findIndex(s => s.id === vaultSlotId);
 
-    if (slotIndex === -1) {
-        addMessage({ type: 'error', text: 'Vault slot not found.' });
-        return false;
-    }
+    if (slotIndex === -1) { addMessage({ type: 'error', text: 'Vault slot not found.' }); return false; }
 
     const oldItem = newVault[slotIndex].item;
-    if (oldItem) {
-        addMessage({ type: 'notification', text: `${getItemById(oldItem.id)?.name} destroyed.` });
-    }
+    if (oldItem) { addMessage({ type: 'notification', text: `${getItemById(oldItem.id)?.name} destroyed.` }); }
 
-    // Remove the new lock from inventory
     if (newInventory[newItemId]) {
         newInventory[newItemId].quantity -= 1;
-        if (newInventory[newItemId].quantity <= 0) {
-            delete newInventory[newItemId];
-        }
-    } else {
-        addMessage({ type: 'error', text: 'Upgrade item not found in inventory.' });
-        return false;
-    }
+        if (newInventory[newItemId].quantity <= 0) delete newInventory[newItemId];
+    } else { addMessage({ type: 'error', text: 'Upgrade item not found in inventory.' }); return false; }
 
-    // Deploy the new lock
     const newItemBase = getItemById(newItemId);
     if (!newItemBase) return false;
 
-    newVault[slotIndex].item = {
-        id: newItemId,
-        quantity: 1,
-        currentStrength: newItemBase.strength?.max,
-        // ... other default stats
-    };
+    newVault[slotIndex].item = { id: newItemId, quantity: 1, currentStrength: newItemBase.strength?.max };
 
     const playerAfterUpdate = await updatePlayer({ ..._currentPlayer, vault: newVault, inventory: newInventory });
 
@@ -855,6 +804,50 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return true;
     }
     return false;
+  }, [_currentPlayer, addMessage]);
+  
+  const fortifyLockSlot = useCallback(async (vaultSlotId: string, fortifierId: string): Promise<boolean> => {
+      if (!_currentPlayer) return false;
+
+      const newVault = [..._currentPlayer.vault];
+      const newInventory = { ..._currentPlayer.inventory };
+      const slotIndex = newVault.findIndex(s => s.id === vaultSlotId);
+
+      if (slotIndex === -1 || newVault[slotIndex].type !== 'lock') {
+          addMessage({ type: 'error', text: 'Invalid lock slot.' });
+          return false;
+      }
+
+      if (newVault[slotIndex].fortifier) {
+          addMessage({ type: 'error', text: 'Slot is already fortified.' });
+          return false;
+      }
+      
+      const fortifierBase = getItemById(fortifierId);
+      if (!fortifierBase || !newInventory[fortifierId] || newInventory[fortifierId].quantity <= 0) {
+          addMessage({ type: 'error', text: 'Fortifier not available in inventory.' });
+          return false;
+      }
+
+      newInventory[fortifierId].quantity -= 1;
+      if (newInventory[fortifierId].quantity <= 0) {
+          delete newInventory[fortifierId];
+      }
+      
+      newVault[slotIndex].fortifier = {
+          id: fortifierId,
+          quantity: 1,
+          currentStrength: fortifierBase.strength?.max,
+          currentCharges: fortifierBase.maxCharges,
+      };
+
+      const playerAfterUpdate = await updatePlayer({ ..._currentPlayer, vault: newVault, inventory: newInventory });
+      if (playerAfterUpdate) {
+          _setCurrentPlayer(playerAfterUpdate);
+          addMessage({ type: 'notification', text: `Lock fortified with ${fortifierBase.name}.` });
+          return true;
+      }
+      return false;
   }, [_currentPlayer, addMessage]);
 
 
@@ -895,24 +888,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addItemToInventory,
     removeItemFromInventory,
     deployItemToVault,
-    isSpyShopActive: _isSpyShopActive, // Keeping for other potential uses
-    setIsSpyShopActive: (isActive: boolean) => {
-        // console.log(`AppContext: setIsSpyShopActive called with ${isActive}`);
-        _setIsSpyShopActive(isActive);
-    },
-    isSpyShopOpen: _isSpyShopOpen, // Primary state for shop visibility
-    openSpyShop: () => {
-        // console.log("AppContext: openSpyShop called. Setting isSpyShopOpen to TRUE.");
-        _setIsSpyShopOpen(true);
-    },
-    closeSpyShop: () => {
-        // console.log("AppContext: closeSpyShop called. Setting isSpyShopOpen to FALSE.");
-        _setIsSpyShopOpen(false);
-    },
+    isSpyShopActive: _isSpyShopActive,
+    setIsSpyShopActive: (isActive: boolean) => _setIsSpyShopActive(isActive),
+    isSpyShopOpen: _isSpyShopOpen,
+    openSpyShop: () => _setIsSpyShopOpen(true),
+    closeSpyShop: () => _setIsSpyShopOpen(false),
     shopSearchTerm: _shopSearchTerm,
-    setShopSearchTerm: (term: string) => {
-        _setShopSearchTerm(term);
-    },
+    setShopSearchTerm: (term: string) => _setShopSearchTerm(term),
     isShopAuthenticated: _isShopAuthenticated,
     setIsShopAuthenticated: (isAuthenticated: boolean) => _setIsShopAuthenticated(isAuthenticated),
     todInventoryContext: _todInventoryContext,
@@ -922,27 +904,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     isScrollLockActive: _isScrollLockActive,
     setIsScrollLockActive: _setIsScrollLockActive,
     getItemById: getItemById,
-
-    // Minigame context values
     activeMinigame: _activeMinigame,
     openMinigame,
     closeMinigame,
-
-    // --- NEW VALUES ---
-    openItemSliderInTOD,
-    
+    openItemSlider,
     opponentVaultState: _opponentVaultState,
     openOpponentVault,
     closeOpponentVault,
-
     confirmationState: _confirmationState,
     showConfirmation,
     hideConfirmation,
-
     rechargeItem,
     offloadItem,
     upgradeLock,
-
+    fortifyLockSlot,
   }), [
     _currentPlayer, _isLoading, _isPiBrowser, _onboardingStep, _messages, _dailyTeamCode, _pendingPiId,
     _isTODWindowOpen, _todWindowTitle, _todWindowContent, _todWindowOptions,
@@ -952,19 +927,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deployItemToVault, openInventoryTOD, closeInventoryTOD, _setOnboardingStep, _setIsLoading,
     _isSpyShopActive, _isSpyShopOpen, _shopSearchTerm, _setShopSearchTerm, _isShopAuthenticated, _setIsShopAuthenticated,
     _isScrollLockActive, _setIsScrollLockActive,
-    _activeMinigame, openMinigame, closeMinigame, // Existing dependencies
-
-    // --- NEW DEPENDENCIES ---
-    openItemSliderInTOD,
+    _activeMinigame, openMinigame, closeMinigame,
+    openItemSlider,
     _opponentVaultState, openOpponentVault, closeOpponentVault,
     _confirmationState, showConfirmation, hideConfirmation,
-    rechargeItem, offloadItem, upgradeLock
+    rechargeItem, offloadItem, upgradeLock, fortifyLockSlot
   ]);
 
   return (
     <AppContext.Provider value={contextValue}>
       {children}
-      {/* Conditionally render the full-screen minigame */}
       {_activeMinigame && (
         <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 backdrop-blur-md">
           <MinigameRenderer activeMinigame={_activeMinigame} onMinigameComplete={closeMinigame} />
@@ -974,7 +946,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Helper component to render the appropriate minigame
 interface MinigameRendererProps {
   activeMinigame: MinigameArguments;
   onMinigameComplete: (success: boolean, strengthReduced: number, toolDamageAmount?: number) => void;
@@ -1041,8 +1012,8 @@ export function useAppContext() {
   }
   return {
     ...context,
-    getItemById: getItemById, // Ensure getItemById is still accessible
+    getItemById: getItemById,
   };
 }
 
-export { FIXED_DEV_PI_ID, VaultSlot };
+export { FIXED_DEV_PI_ID, type VaultSlot };
