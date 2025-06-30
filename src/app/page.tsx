@@ -26,7 +26,6 @@ import { cn } from '@/lib/utils';
 import { CodenameInput } from '@/components/game/onboarding/CodenameInput';
 
 // --- NEW IMPORTS ---
-import { ItemSliderWindow } from '@/components/game/item-browser/ItemSliderWindow';
 import { OpponentVaultPage } from '@/components/game/OpponentVaultPage';
 import { ConfirmationPopup } from '@/components/game/shared/ConfirmationPopup';
 
@@ -64,8 +63,6 @@ export default function HomePage() {
     isScrollLockActive, // Get scroll lock state from AppContext
 
     // --- NEW CONTEXT VALUES ---
-    itemSliderState,
-    closeItemSlider,
     opponentVaultState,
     closeOpponentVault,
     confirmationState,
@@ -326,15 +323,6 @@ export default function HomePage() {
       )}
 
       {/* --- NEW COMPONENT RENDERING --- */}
-
-      {/* The Item Slider Window */}
-      <ItemSliderWindow
-          isOpen={itemSliderState.isOpen}
-          onClose={closeItemSlider}
-          items={itemSliderState.items}
-          context={itemSliderState.context!}
-          initialIndex={itemSliderState.initialIndex}
-      />
 
       {/* The Opponent Vault Page */}
       <OpponentVaultPage

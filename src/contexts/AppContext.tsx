@@ -28,15 +28,14 @@ import KeyCracker from '@/components/game/minigames/KeyCracker';
 import { HolographicPanel, HolographicButton } from '@/components/game/shared/HolographicPanel';
 
 // --- NEW IMPORTS ---
-import type { DisplayItem } from '@/components/game/tod/CardTextureRenderer';
-import type { ItemWindowContext } from '@/components/game/item-browser/ItemSliderWindow';
 import type { ConfirmationPopupProps } from '@/components/game/shared/ConfirmationPopup';
+import { ItemSliderInTOD } from '@/components/game/item-browser/ItemSliderInTOD';
 
 
 // Now, if other components (like EquipmentLockerSection or CardTextureRenderer) need these types,
 // they should import them directly from here (AppContext.tsx) or game-items.ts if they're not part of the context.
 // For now, they can continue importing from AppContext, and AppContext will properly resolve them.
-export type { ItemCategory, GameItemBase, ItemLevel, PlayerInventoryItem, LockFortifierItem, DisplayItem };
+export type { ItemCategory, GameItemBase, ItemLevel, PlayerInventoryItem, LockFortifierItem };
 
 
 export type Faction = 'Cyphers' | 'Shadows' | 'Observer';
@@ -61,6 +60,45 @@ export interface PlayerStats {
   hasPlacedFirstLock: boolean;
 }
 
+export interface DisplayItem {
+  id: string;
+  baseItem: GameItemBase | null;
+  title: string;
+  quantityInStack: number;
+  imageSrc: string;
+  colorVar: string;
+  levelForVisuals: ItemLevel;
+  stackType: 'category' | 'itemType' | 'itemLevel' | 'individual';
+  path: string[];
+  dataAiHint?: string;
+  displayTextLabel?: string;
+  instanceCurrentStrength?: number;
+  instanceMaxStrength?: number;
+  instanceCurrentCharges?: number;
+  instanceMaxCharges?: number;
+  instanceCurrentUses?: number;
+  instanceMaxUses?: number;
+  instanceCurrentAlerts?: number;
+  instanceMaxAlerts?: number;
+  aggregateCurrentStrength?: number;
+  aggregateMaxStrength?: number;
+  aggregateCurrentCharges?: number;
+  aggregateMaxCharges?: number;
+  aggregateCurrentUses?: number;
+  aggregateMaxUses?: number;
+  aggregateCurrentAlerts?: number;
+  aggregateMaxAlerts?: number;
+}
+
+
+export type ItemWindowContext =
+  | { type: 'locker'; itemLevel: number }
+  | { type: 'deploy_nexus'; vaultSlotId: string }
+  | { type: 'deploy_lock'; vaultSlotId: string }
+  | { type: 'upgrade_lock'; vaultSlotId: string; currentLock: DisplayItem }
+  | { type: 'infiltrate'; opponentVaultId: string };
+
+
 export interface TODWindowOptions {
   showCloseButton?: boolean;
   explicitTheme?: Theme;
@@ -79,13 +117,6 @@ export interface GameMessage {
 }
 
 // --- NEW STATE INTERFACES ---
-interface ItemSliderState {
-    isOpen: boolean;
-    items: DisplayItem[];
-    context: ItemWindowContext | null;
-    initialIndex: number;
-}
-
 interface OpponentVaultState {
     isOpen: boolean;
     opponentId: string | null;
@@ -170,10 +201,8 @@ interface AppContextType {
   closeMinigame: (success: boolean, strengthReduced: number, toolDamageAmount?: number) => void;
 
   // --- NEW CONTEXT VALUES ---
-  itemSliderState: ItemSliderState;
-  openItemSlider: (items: DisplayItem[], context: ItemWindowContext, initialIndex?: number) => void;
-  closeItemSlider: () => void;
-
+  openItemSliderInTOD: (title: string, items: DisplayItem[], context: ItemWindowContext, initialIndex?: number) => void;
+  
   opponentVaultState: OpponentVaultState;
   openOpponentVault: (opponentId: string) => void;
   closeOpponentVault: () => void;
@@ -229,7 +258,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [_activeMinigame, _setActiveMinigame] = useState<MinigameArguments | null>(null);
 
   // --- NEW STATES ---
-  const [_itemSliderState, _setItemSliderState] = useState<ItemSliderState>({ isOpen: false, items: [], context: null, initialIndex: 0 });
   const [_opponentVaultState, _setOpponentVaultState] = useState<OpponentVaultState>({ isOpen: false, opponentId: null });
   const [_confirmationState, _setConfirmationState] = useState<ConfirmationState>(null);
 
@@ -252,6 +280,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const closeTODWindow = useCallback(() => {
     _setIsTODWindowOpen(false);
     _setTODWindowContent(null);
+    _setIsScrollLockActive(false); // Ensure scroll lock is released when window closes
   }, []);
 
   const openTODWindow = useCallback((title: string, content: ReactNode, options: TODWindowOptions = {}) => {
@@ -268,6 +297,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         themeVersion: versionToUseForWindow
     });
     _setIsTODWindowOpen(true);
+    _setIsScrollLockActive(true); // Lock scroll when any TOD window opens
   }, [currentGlobalTheme, themeVersion, _setTodInventoryContext]); // Added _setTodInventoryContext to dependencies
 
   const attemptLoginWithPiId = useCallback(async (piId: string) => {
@@ -682,15 +712,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [_activeMinigame, _currentPlayer, addMessage, updatePlayerStatsAppContext]);
 
   // --- NEW FUNCTIONS ---
-  const openItemSlider = useCallback((items: DisplayItem[], context: ItemWindowContext, initialIndex: number = 0) => {
-    _setItemSliderState({ isOpen: true, items, context, initialIndex });
-    _setIsScrollLockActive(true); // Lock main TOD scroll
-  }, []);
-
-  const closeItemSlider = useCallback(() => {
-    _setItemSliderState({ isOpen: false, items: [], context: null, initialIndex: 0 });
-    _setIsScrollLockActive(false); // Unlock main TOD scroll
-  }, []);
+  const openItemSliderInTOD = useCallback((title: string, items: DisplayItem[], context: ItemWindowContext, initialIndex: number = 0) => {
+      const content = (
+          <ItemSliderInTOD
+              items={items}
+              context={context}
+              initialIndex={initialIndex}
+              onClose={closeTODWindow}
+          />
+      );
+      openTODWindow(title, content, { showCloseButton: true });
+  }, [openTODWindow, closeTODWindow]);
 
   const openOpponentVault = useCallback((opponentId: string) => {
     _setOpponentVaultState({ isOpen: true, opponentId });
@@ -897,10 +929,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     closeMinigame,
 
     // --- NEW VALUES ---
-    itemSliderState: _itemSliderState,
-    openItemSlider,
-    closeItemSlider,
-
+    openItemSliderInTOD,
+    
     opponentVaultState: _opponentVaultState,
     openOpponentVault,
     closeOpponentVault,
@@ -925,7 +955,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     _activeMinigame, openMinigame, closeMinigame, // Existing dependencies
 
     // --- NEW DEPENDENCIES ---
-    _itemSliderState, openItemSlider, closeItemSlider,
+    openItemSliderInTOD,
     _opponentVaultState, openOpponentVault, closeOpponentVault,
     _confirmationState, showConfirmation, hideConfirmation,
     rechargeItem, offloadItem, upgradeLock
