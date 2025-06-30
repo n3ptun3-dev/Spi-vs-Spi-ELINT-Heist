@@ -358,7 +358,7 @@ export function VaultSection({ parallaxOffset }: SectionProps) {
                 key={slot.id}
                 className={cn(
                   "absolute w-16 h-16 md:w-20 md:h-20 rounded-md border-2 cursor-pointer transition-all hover:scale-110 hover:shadow-lg",
-                  "flex flex-col items-center justify-center text-center overflow-hidden relative"
+                  "flex flex-col items-center justify-center text-center overflow-hidden"
                 )}
                 style={{
                   left: x,
