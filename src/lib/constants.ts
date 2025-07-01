@@ -9,6 +9,20 @@ export const NATO_ALPHABET = [
   "X-ray", "Yankee", "Zulu"
 ];
 
+// This is the raw HSL string values (e.g., "H S% L%"), no commas, no var().
+export const ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL = {
+  0: '220 10% 40%', // Level 0 uses Level 1 color for display
+  1: '220 10% 40%',  // Grey (Cool Grey/Blueish)
+  2: '120 60% 45%',  // Green
+  3: '55 100% 50%',  // Yellow
+  4: '30 100% 50%',  // Orange
+  5: '270 60% 55%',  // Purple
+  6: '0 100% 50%',   // Red
+  7: '180 100% 50%', // Cyan
+  8: '300 100% 50%', // Magenta
+};
+
+
 export const ITEM_LEVEL_COLORS_CSS_VARS = {
   0: "var(--level-1-color)", // Mapping Level 0 to Level 1 color for display
   1: "var(--level-1-color)",
