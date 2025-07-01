@@ -7,16 +7,17 @@ import { cn } from '@/lib/utils';
 import { useAppContext, type DisplayItem, type ItemWindowContext } from '@/contexts/AppContext';
 import { Recycle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ITEM_LEVEL_COLORS_CSS_VARS } from '@/lib/constants';
+import { ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL } from '@/lib/constants'; // Using new constant
 
 const ItemProgressBar: React.FC<{ label?: string; current: number; max: number; colorVar: string }> = ({ label, current, max, colorVar }) => {
     const percentage = max > 0 ? Math.min(100, Math.max(0, (current / max) * 100)) : 0;
-    const isLevel3 = colorVar === 'var(--level-3-color)'; // Check if the color var matches level 3
+    // Check if the color var matches level 3 raw HSL
+    const isLevel3 = colorVar === ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL[3];
     const textColor = isLevel3 ? 'text-black' : 'text-white';
 
     return (
-        <div className="w-full h-5 rounded-full bg-muted/30 overflow-hidden relative flex items-center justify-center border border-black/20">
-            <div className="absolute left-0 top-0 h-full rounded-full" style={{ backgroundColor: `hsl(${colorVar})` }} />
+        <div className="w-full h-5 rounded-full bg-muted/30 overflow-hidden relative flex items-center justify-center border border-black/20 my-1">
+            <div className="absolute left-0 top-0 h-full" style={{ backgroundColor: `hsl(${colorVar})` }} />
             <div className={cn("relative z-10 text-xs font-bold mix-blend-overlay", textColor)}>
                 {label} {current}/{max}
             </div>
@@ -38,7 +39,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
         baseItem,
         title,
         imageSrc,
-        colorVar,
+        colorVar, // This is now a raw HSL string: "H S% L%"
         displayTextLabel,
         instanceCurrentStrength, instanceMaxStrength,
         instanceCurrentCharges, instanceMaxCharges,
@@ -46,6 +47,12 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
         instanceCurrentAlerts, instanceMaxAlerts,
         levelForVisuals,
     } = displayItem;
+
+    // --- TROUBLESHOOTING LOG ---
+    React.useEffect(() => {
+        console.log(`[ItemCard Render]: title='${displayItem.title}', level=${levelForVisuals}, colorVar='${colorVar}'`);
+    }, [displayItem.title, levelForVisuals, colorVar]);
+
 
     const handleDeploy = () => {
         if((context.type === 'deploy_lock' || context.type === 'deploy_nexus') && displayItem.baseItem) {
@@ -55,7 +62,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
     };
     
     const handleUpgrade = () => {
-        if(context.type === 'upgrade_lock' && displayItem.baseItem) {
+        if(context.type === 'upgrade_lock' && displayItem.baseItem && context.currentLock) {
             showConfirmation({
                 title: 'Confirm Upgrade',
                 content: <p>Your currently installed <span style={{color: `hsl(${context.currentLock.colorVar})`}}>{context.currentLock.title}</span> will be destroyed and replaced with <span style={{color: `hsl(${displayItem.colorVar})`}}>{displayItem.title}</span>. Are you sure?</p>,
@@ -114,7 +121,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
         let isFull = false;
 
         if (baseItem) {
-            isRechargeable = baseItem.type === 'Rechargeable' || (baseItem.category === 'Hardware' && baseItem.maxRechargeInitiations > 0) || (baseItem.category === 'Nexus Upgrades' && baseItem.durability === 'Rechargeable');
+            isRechargeable = baseItem.type === 'Rechargeable' || (baseItem.category === 'Hardware' && baseItem.maxRechargeInitiations && baseItem.maxRechargeInitiations > 0) || (baseItem.category === 'Nexus Upgrades' && baseItem.durability === 'Rechargeable');
             
             const current = instanceCurrentStrength ?? instanceCurrentCharges ?? instanceCurrentUses ?? instanceCurrentAlerts;
             const max = instanceMaxStrength ?? instanceMaxCharges ?? instanceMaxUses ?? instanceMaxAlerts;
@@ -128,7 +135,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
                         <HolographicButton onClick={handleOffload} className="!p-2">
                             <Recycle className="w-5 h-5" />
                         </HolographicButton>
-                        {isRechargeable && baseItem && baseItem.category !== 'Infiltration Gear' && !displayTextLabel?.toLowerCase().includes('activation cost') && (
+                        {isRechargeable && baseItem && !displayTextLabel?.toLowerCase().includes('activation cost') && (
                             <HolographicButton onClick={handleRecharge} disabled={isFull} className="flex-grow">
                                 {isFull ? 'Fully Charged' : 'Recharge'}
                             </HolographicButton>
@@ -148,7 +155,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
                 return null;
         }
     };
-    
+
     const levelColorHsl = `hsl(${colorVar})`;
     const levelColorHsla = `hsla(${colorVar}, 0.2)`;
 
@@ -159,43 +166,44 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
                 style={{ 
                     borderColor: levelColorHsl, 
                     backgroundColor: levelColorHsla,
-                    aspectRatio: '4 / 6' 
                 }}
             >
                 <ScrollArea className="flex-grow w-full h-full">
-                    <div className="w-full aspect-[4/3] bg-black/30 relative">
-                        <img src={imageSrc} alt={title} className="w-full h-full object-contain" />
-                    </div>
-
-                    <div className="p-3 space-y-3 font-rajdhani">
-                        <h2 className="text-xl font-orbitron text-center" style={{ color: levelColorHsl, wordWrap: 'break-word' }}>
-                            {title}
-                        </h2>
-
-                        <div className="min-h-[4rem] flex flex-col justify-center items-center space-y-1 p-1">
-                            {displayTextLabel ? (
-                                 <p className="text-center font-semibold text-muted-foreground">{displayTextLabel}</p>
-                            ) : (
-                                <>
-                                    {instanceMaxStrength !== undefined && <ItemProgressBar label="Strength" current={instanceCurrentStrength || 0} max={instanceMaxStrength} colorVar={colorVar} />}
-                                    {instanceMaxCharges !== undefined && <ItemProgressBar label="Charges" current={instanceCurrentCharges || 0} max={instanceMaxCharges} colorVar={colorVar} />}
-                                    {instanceMaxUses !== undefined && <ItemProgressBar label="Uses" current={instanceCurrentUses || 0} max={instanceMaxUses} colorVar={colorVar} />}
-                                    {instanceMaxAlerts !== undefined && <ItemProgressBar label="Alerts" current={instanceCurrentAlerts || 0} max={instanceMaxAlerts} colorVar={colorVar} />}
-                                </>
-                            )}
+                    <div className="w-full">
+                        <div className="w-full bg-black/30">
+                            <img src={imageSrc} alt={title} className="w-full h-auto object-contain" />
                         </div>
 
-                        <div className="py-2">
-                          {renderButtons()}
-                        </div>
-                        
-                        <div className="space-y-2 text-sm text-muted-foreground border-t border-border/50 pt-3">
-                            <p>{baseItem?.description}</p>
-                            {baseItem?.strength && <p><span className="font-semibold text-foreground">Strength:</span> {baseItem.strength.max}</p>}
-                            {baseItem?.resistance && <p><span className="font-semibold text-foreground">Resistance:</span> {baseItem.resistance.max}</p>}
-                            {baseItem?.type && <p><span className="font-semibold text-foreground">Type:</span> {baseItem.type}</p>}
-                            {baseItem?.scarcity && <p><span className="font-semibold text-foreground">Scarcity:</span> {baseItem.scarcity}</p>}
-                            {baseItem?.lockTypeEffectiveness?.idealCounterAgainst && <p className="mt-2 p-2 border border-green-500/50 rounded-md bg-green-500/10"><span className="font-semibold text-green-300">Effective Against:</span> {baseItem.lockTypeEffectiveness.idealCounterAgainst.join(', ')}</p>}
+                        <div className="p-3 space-y-3 font-rajdhani">
+                            <h2 className="text-xl font-orbitron text-center" style={{ color: levelColorHsl, wordWrap: 'break-word' }}>
+                                {title}
+                            </h2>
+
+                            <div className="min-h-[4rem] flex flex-col justify-center items-center space-y-1 p-1">
+                                {displayTextLabel ? (
+                                     <p className="text-center font-semibold text-muted-foreground">{displayTextLabel}</p>
+                                ) : (
+                                    <>
+                                        {instanceMaxStrength !== undefined && <ItemProgressBar label="Strength" current={instanceCurrentStrength || 0} max={instanceMaxStrength} colorVar={colorVar} />}
+                                        {instanceMaxCharges !== undefined && <ItemProgressBar label="Charges" current={instanceCurrentCharges || 0} max={instanceMaxCharges} colorVar={colorVar} />}
+                                        {instanceMaxUses !== undefined && <ItemProgressBar label="Uses" current={instanceCurrentUses || 0} max={instanceMaxUses} colorVar={colorVar} />}
+                                        {instanceMaxAlerts !== undefined && <ItemProgressBar label="Alerts" current={instanceCurrentAlerts || 0} max={instanceMaxAlerts} colorVar={colorVar} />}
+                                    </>
+                                )}
+                            </div>
+
+                            <div className="py-2">
+                              {renderButtons()}
+                            </div>
+                            
+                            <div className="space-y-2 text-sm text-muted-foreground border-t border-border/50 pt-3">
+                                <p>{baseItem?.description}</p>
+                                {baseItem?.strength && <p><span className="font-semibold text-foreground">Strength:</span> {baseItem.strength.max}</p>}
+                                {baseItem?.resistance && <p><span className="font-semibold text-foreground">Resistance:</span> {baseItem.resistance.max}</p>}
+                                {baseItem?.type && <p><span className="font-semibold text-foreground">Type:</span> {baseItem.type}</p>}
+                                {baseItem?.scarcity && <p><span className="font-semibold text-foreground">Scarcity:</span> {baseItem.scarcity}</p>}
+                                {baseItem?.lockTypeEffectiveness?.idealCounterAgainst && <p className="mt-2 p-2 border border-green-500/50 rounded-md bg-green-500/10"><span className="font-semibold text-green-300">Effective Against:</span> {baseItem.lockTypeEffectiveness.idealCounterAgainst.join(', ')}</p>}
+                            </div>
                         </div>
                     </div>
                 </ScrollArea>
