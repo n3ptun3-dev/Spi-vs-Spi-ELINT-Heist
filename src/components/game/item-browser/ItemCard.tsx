@@ -131,7 +131,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
         switch (context.type) {
             case 'locker':
                 return (
-                    <div className="flex items-center gap-2 p-2">
+                    <div className="flex items-center gap-2">
                         <HolographicButton onClick={handleOffload} className="!p-2">
                             <Recycle className="w-5 h-5" />
                         </HolographicButton>
@@ -144,13 +144,13 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
                 );
             case 'deploy_lock':
             case 'deploy_nexus':
-                 return <div className="p-2"><HolographicButton onClick={handleDeploy} className="w-full">Deploy</HolographicButton></div>;
+                 return <HolographicButton onClick={handleDeploy} className="w-full">Deploy</HolographicButton>;
             case 'upgrade_lock':
-                return <div className="p-2"><HolographicButton onClick={handleUpgrade} className="w-full">Select for Upgrade</HolographicButton></div>;
+                return <HolographicButton onClick={handleUpgrade} className="w-full">Select for Upgrade</HolographicButton>;
             case 'infiltrate':
-                return <div className="p-2"><HolographicButton onClick={() => { /* Infiltrate logic */ onClose(); }} className="w-full">Use for Infiltration</HolographicButton></div>;
+                return <HolographicButton onClick={() => { /* Infiltrate logic */ onClose(); }} className="w-full">Use for Infiltration</HolographicButton>;
             case 'fortify_lock':
-                 return <div className="p-2"><HolographicButton onClick={handleFortify} className="w-full">Fortify</HolographicButton></div>;
+                 return <HolographicButton onClick={handleFortify} className="w-full">Fortify</HolographicButton>;
             default:
                 return null;
         }
@@ -160,53 +160,52 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
     const levelColorHsla = `hsla(${colorVar}, 0.2)`;
 
     return (
-        <div className="w-full h-full flex items-center justify-center p-0">
-             <div 
-                className="w-full h-full flex flex-col overflow-hidden rounded-xl border-2" 
-                style={{ 
-                    borderColor: levelColorHsl, 
-                    backgroundColor: levelColorHsla,
-                }}
-            >
-                <ScrollArea className="flex-grow w-full h-full">
-                    <div className="w-full">
-                        <div className="w-full bg-black/30">
-                            <img src={imageSrc} alt={title} className="w-full h-auto object-contain" />
-                        </div>
+        <div 
+            className="w-full h-full flex flex-col overflow-hidden rounded-xl border-2" 
+            style={{ 
+                borderColor: levelColorHsl, 
+                backgroundColor: levelColorHsla,
+            }}
+        >
+            {/* Fixed Top Part: Image */}
+            <div className="w-full bg-black/30 flex-shrink-0">
+                <img src={imageSrc} alt={title} className="w-full h-auto object-contain" />
+            </div>
 
-                        <div className="p-3 space-y-3 font-rajdhani">
-                            <h2 className="text-xl font-orbitron text-center" style={{ color: levelColorHsl, wordWrap: 'break-word' }}>
-                                {title}
-                            </h2>
+            {/* Scrollable Middle Part: Title, Stats, Description */}
+            <ScrollArea className="flex-grow w-full h-full">
+                <div className="p-3 space-y-3 font-rajdhani">
+                    <h2 className="text-xl font-orbitron text-center" style={{ color: levelColorHsl, wordWrap: 'break-word' }}>
+                        {title}
+                    </h2>
 
-                            <div className="min-h-[4rem] flex flex-col justify-center items-center space-y-1 p-1">
-                                {displayTextLabel ? (
-                                     <p className="text-center font-semibold text-muted-foreground">{displayTextLabel}</p>
-                                ) : (
-                                    <>
-                                        {instanceMaxStrength !== undefined && <ItemProgressBar label="Strength" current={instanceCurrentStrength || 0} max={instanceMaxStrength} colorVar={colorVar} />}
-                                        {instanceMaxCharges !== undefined && <ItemProgressBar label="Charges" current={instanceCurrentCharges || 0} max={instanceMaxCharges} colorVar={colorVar} />}
-                                        {instanceMaxUses !== undefined && <ItemProgressBar label="Uses" current={instanceCurrentUses || 0} max={instanceMaxUses} colorVar={colorVar} />}
-                                        {instanceMaxAlerts !== undefined && <ItemProgressBar label="Alerts" current={instanceCurrentAlerts || 0} max={instanceMaxAlerts} colorVar={colorVar} />}
-                                    </>
-                                )}
-                            </div>
-
-                            <div className="py-2">
-                              {renderButtons()}
-                            </div>
-                            
-                            <div className="space-y-2 text-sm text-muted-foreground border-t border-border/50 pt-3">
-                                <p>{baseItem?.description}</p>
-                                {baseItem?.strength && <p><span className="font-semibold text-foreground">Strength:</span> {baseItem.strength.max}</p>}
-                                {baseItem?.resistance && <p><span className="font-semibold text-foreground">Resistance:</span> {baseItem.resistance.max}</p>}
-                                {baseItem?.type && <p><span className="font-semibold text-foreground">Type:</span> {baseItem.type}</p>}
-                                {baseItem?.scarcity && <p><span className="font-semibold text-foreground">Scarcity:</span> {baseItem.scarcity}</p>}
-                                {baseItem?.lockTypeEffectiveness?.idealCounterAgainst && <p className="mt-2 p-2 border border-green-500/50 rounded-md bg-green-500/10"><span className="font-semibold text-green-300">Effective Against:</span> {baseItem.lockTypeEffectiveness.idealCounterAgainst.join(', ')}</p>}
-                            </div>
-                        </div>
+                    <div className="min-h-[4rem] flex flex-col justify-center items-center space-y-1 p-1">
+                        {displayTextLabel ? (
+                             <p className="text-center font-semibold text-muted-foreground">{displayTextLabel}</p>
+                        ) : (
+                            <>
+                                {instanceMaxStrength !== undefined && <ItemProgressBar label="Strength" current={instanceCurrentStrength || 0} max={instanceMaxStrength} colorVar={colorVar} />}
+                                {instanceMaxCharges !== undefined && <ItemProgressBar label="Charges" current={instanceCurrentCharges || 0} max={instanceMaxCharges} colorVar={colorVar} />}
+                                {instanceMaxUses !== undefined && <ItemProgressBar label="Uses" current={instanceCurrentUses || 0} max={instanceMaxUses} colorVar={colorVar} />}
+                                {instanceMaxAlerts !== undefined && <ItemProgressBar label="Alerts" current={instanceCurrentAlerts || 0} max={instanceMaxAlerts} colorVar={colorVar} />}
+                            </>
+                        )}
                     </div>
-                </ScrollArea>
+                    
+                    <div className="space-y-2 text-sm text-muted-foreground border-t border-border/50 pt-3">
+                        <p>{baseItem?.description}</p>
+                        {baseItem?.strength && <p><span className="font-semibold text-foreground">Strength:</span> {baseItem.strength.max}</p>}
+                        {baseItem?.resistance && <p><span className="font-semibold text-foreground">Resistance:</span> {baseItem.resistance.max}</p>}
+                        {baseItem?.type && <p><span className="font-semibold text-foreground">Type:</span> {baseItem.type}</p>}
+                        {baseItem?.scarcity && <p><span className="font-semibold text-foreground">Scarcity:</span> {baseItem.scarcity}</p>}
+                        {baseItem?.lockTypeEffectiveness?.idealCounterAgainst && <p className="mt-2 p-2 border border-green-500/50 rounded-md bg-green-500/10"><span className="font-semibold text-green-300">Effective Against:</span> {baseItem.lockTypeEffectiveness.idealCounterAgainst.join(', ')}</p>}
+                    </div>
+                </div>
+            </ScrollArea>
+
+            {/* Fixed Bottom Part: Buttons */}
+            <div className="p-3 border-t border-border/50 flex-shrink-0">
+              {renderButtons()}
             </div>
         </div>
     );
