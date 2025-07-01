@@ -8,7 +8,7 @@ import type { ItemWindowContext } from '@/contexts/AppContext';
 import { HolographicButton } from '../shared/HolographicPanel';
 import { useAppContext } from '@/contexts/AppContext';
 import { cn } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 interface ItemSliderInTODProps {
   items: DisplayItem[];
@@ -25,21 +25,22 @@ export const ItemSliderInTOD: React.FC<ItemSliderInTODProps> = ({
 
   const handleVisitShop = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onClose(); // Close the current TOD
-    openSpyShop(); // Open the spy shop
+    onClose(); 
+    openSpyShop(); 
   };
 
   return (
     <div className="w-full h-full flex flex-col p-0">
       {items.length > 0 ? (
-        <ScrollArea className="w-full h-full" orientation="horizontal">
+        <ScrollArea className="w-full h-full whitespace-nowrap">
             <div className="flex space-x-4 h-full py-2">
                 {items.map((item) => (
-                    <div key={item.id} className="h-full flex-shrink-0">
+                    <div key={item.id} className="h-full inline-block flex-shrink-0 w-[70vw] max-w-[300px]">
                         <ItemCard displayItem={item} context={context} onClose={onClose} />
                     </div>
                 ))}
             </div>
+            <ScrollBar orientation="horizontal" />
         </ScrollArea>
       ) : (
         <div className="w-full h-full flex items-center justify-center">

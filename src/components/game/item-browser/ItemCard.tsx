@@ -11,15 +11,19 @@ import { ITEM_LEVEL_COLORS_CSS_VARS } from '@/lib/constants';
 
 const ItemProgressBar: React.FC<{ label?: string; current: number; max: number; colorVar: string }> = ({ label, current, max, colorVar }) => {
     const percentage = max > 0 ? Math.min(100, Math.max(0, (current / max) * 100)) : 0;
+    const isLevel3 = colorVar === 'var(--level-3-color)'; // Check if the color var matches level 3
+    const textColor = isLevel3 ? 'text-black' : 'text-white';
+
     return (
         <div className="w-full h-5 rounded-full bg-muted/30 overflow-hidden relative flex items-center justify-center border border-black/20">
-            <div className="absolute left-0 top-0 h-full rounded-full" style={{ width: `${percentage}%`, backgroundColor: `hsl(${colorVar})` }} />
-            <div className="relative z-10 text-xs font-bold text-white mix-blend-overlay">
+            <div className="absolute left-0 top-0 h-full rounded-full" style={{ backgroundColor: `hsl(${colorVar})` }} />
+            <div className={cn("relative z-10 text-xs font-bold mix-blend-overlay", textColor)}>
                 {label} {current}/{max}
             </div>
         </div>
     );
 };
+
 
 interface ItemCardProps {
     displayItem: DisplayItem;
@@ -28,7 +32,7 @@ interface ItemCardProps {
 }
 
 export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClose }) => {
-    const { showConfirmation, hideConfirmation, rechargeItem, offloadItem, deployItemToVault, upgradeLock } = useAppContext();
+    const { showConfirmation, hideConfirmation, rechargeItem, offloadItem, deployItemToVault, upgradeLock, fortifyLockSlot } = useAppContext();
 
     const {
         baseItem,
@@ -42,6 +46,37 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
         instanceCurrentAlerts, instanceMaxAlerts,
         levelForVisuals,
     } = displayItem;
+
+    const handleDeploy = () => {
+        if((context.type === 'deploy_lock' || context.type === 'deploy_nexus') && displayItem.baseItem) {
+            deployItemToVault(context.vaultSlotId, displayItem.baseItem.id);
+            onClose();
+        }
+    };
+    
+    const handleUpgrade = () => {
+        if(context.type === 'upgrade_lock' && displayItem.baseItem) {
+            showConfirmation({
+                title: 'Confirm Upgrade',
+                content: <p>Your currently installed <span style={{color: `hsl(${context.currentLock.colorVar})`}}>{context.currentLock.title}</span> will be destroyed and replaced with <span style={{color: `hsl(${displayItem.colorVar})`}}>{displayItem.title}</span>. Are you sure?</p>,
+                confirmText: "Replace",
+                onConfirm: () => {
+                    if (displayItem.baseItem) {
+                      upgradeLock(context.vaultSlotId, displayItem.baseItem.id);
+                    }
+                    hideConfirmation();
+                    onClose();
+                }
+            });
+        }
+    }
+    
+    const handleFortify = () => {
+        if (context.type === 'fortify_lock' && displayItem.baseItem) {
+             fortifyLockSlot(context.vaultSlotId, displayItem.baseItem.id);
+             onClose();
+        }
+    }
 
     const handleRecharge = () => {
         const rechargeCost = baseItem?.rechargeCost ?? 50;
@@ -74,42 +109,26 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
         });
     };
     
-    const handleDeploy = () => {
-        if((context.type === 'deploy_lock' || context.type === 'deploy_nexus') && displayItem.baseItem) {
-            deployItemToVault(context.vaultSlotId, displayItem.baseItem.id);
-            onClose();
-        }
-    };
-    
-    const handleUpgrade = () => {
-        if(context.type === 'upgrade_lock' && displayItem.baseItem) {
-            showConfirmation({
-                title: 'Confirm Upgrade',
-                content: <p>Your currently installed <span style={{color: `hsl(${context.currentLock.colorVar})`}}>{context.currentLock.title}</span> will be destroyed and replaced with <span style={{color: `hsl(${displayItem.colorVar})`}}>{displayItem.title}</span>. Are you sure?</p>,
-                confirmText: "Replace",
-                onConfirm: () => {
-                    if (displayItem.baseItem) {
-                      upgradeLock(context.vaultSlotId, displayItem.baseItem.id);
-                    }
-                    hideConfirmation();
-                    onClose();
-                }
-            });
-        }
-    }
-
     const renderButtons = () => {
+        let isRechargeable = false;
+        let isFull = false;
+
+        if (baseItem) {
+            isRechargeable = baseItem.type === 'Rechargeable' || (baseItem.category === 'Hardware' && baseItem.maxRechargeInitiations > 0) || (baseItem.category === 'Nexus Upgrades' && baseItem.durability === 'Rechargeable');
+            
+            const current = instanceCurrentStrength ?? instanceCurrentCharges ?? instanceCurrentUses ?? instanceCurrentAlerts;
+            const max = instanceMaxStrength ?? instanceMaxCharges ?? instanceMaxUses ?? instanceMaxAlerts;
+            isFull = current !== undefined && max !== undefined && current >= max;
+        }
+
         switch (context.type) {
             case 'locker':
-                 const isRechargeable = baseItem?.durability === 'Rechargeable' || baseItem?.type === 'Rechargeable' || baseItem?.category === 'Hardware' || baseItem?.category === 'Nexus Upgrades';
-                const isFull = instanceCurrentStrength === instanceMaxStrength || instanceCurrentCharges === instanceMaxCharges || instanceCurrentAlerts === instanceMaxAlerts || instanceCurrentUses === instanceMaxUses;
-
                 return (
                     <div className="flex items-center gap-2 p-2">
                         <HolographicButton onClick={handleOffload} className="!p-2">
                             <Recycle className="w-5 h-5" />
                         </HolographicButton>
-                        {isRechargeable && baseItem.type !== 'One-Time Use' && baseItem.type !== 'Permanent' && (
+                        {isRechargeable && baseItem && baseItem.category !== 'Infiltration Gear' && !displayTextLabel?.toLowerCase().includes('activation cost') && (
                             <HolographicButton onClick={handleRecharge} disabled={isFull} className="flex-grow">
                                 {isFull ? 'Fully Charged' : 'Recharge'}
                             </HolographicButton>
@@ -124,21 +143,22 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
             case 'infiltrate':
                 return <div className="p-2"><HolographicButton onClick={() => { /* Infiltrate logic */ onClose(); }} className="w-full">Use for Infiltration</HolographicButton></div>;
             case 'fortify_lock':
-                 return <div className="p-2"><HolographicButton onClick={() => { /* Fortify logic */ }} className="w-full">Fortify</HolographicButton></div>;
+                 return <div className="p-2"><HolographicButton onClick={handleFortify} className="w-full">Fortify</HolographicButton></div>;
             default:
                 return null;
         }
     };
     
-    const levelColor = ITEM_LEVEL_COLORS_CSS_VARS[levelForVisuals] || ITEM_LEVEL_COLORS_CSS_VARS[1];
-    const levelColorHsl = levelColor.startsWith('var') ? `hsl(${levelColor})` : levelColor;
+    const levelColorHsl = `hsl(${colorVar})`;
+    const levelColorHsla = `hsla(${colorVar}, 0.2)`;
 
     return (
         <div className="w-full h-full flex items-center justify-center p-0">
              <div 
-                className={cn("w-full h-full flex flex-col overflow-hidden rounded-xl border-2 bg-black/50", `bg-level-${levelForVisuals}/20`)} 
+                className="w-full h-full flex flex-col overflow-hidden rounded-xl border-2" 
                 style={{ 
                     borderColor: levelColorHsl, 
+                    backgroundColor: levelColorHsla,
                     aspectRatio: '4 / 6' 
                 }}
             >
@@ -148,7 +168,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
                     </div>
 
                     <div className="p-3 space-y-3 font-rajdhani">
-                        <h2 className="text-2xl font-orbitron text-center" style={{ color: levelColorHsl, wordWrap: 'break-word' }}>
+                        <h2 className="text-xl font-orbitron text-center" style={{ color: levelColorHsl, wordWrap: 'break-word' }}>
                             {title}
                         </h2>
 
@@ -157,10 +177,10 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
                                  <p className="text-center font-semibold text-muted-foreground">{displayTextLabel}</p>
                             ) : (
                                 <>
-                                    {instanceMaxStrength && <ItemProgressBar label="Strength" current={instanceCurrentStrength || 0} max={instanceMaxStrength} colorVar={colorVar} />}
-                                    {instanceMaxCharges && <ItemProgressBar label="Charges" current={instanceCurrentCharges || 0} max={instanceMaxCharges} colorVar={colorVar} />}
-                                    {instanceMaxUses && <ItemProgressBar label="Uses" current={instanceCurrentUses || 0} max={instanceMaxUses} colorVar={colorVar} />}
-                                    {instanceMaxAlerts && <ItemProgressBar label="Alerts" current={instanceCurrentAlerts || 0} max={instanceMaxAlerts} colorVar={colorVar} />}
+                                    {instanceMaxStrength !== undefined && <ItemProgressBar label="Strength" current={instanceCurrentStrength || 0} max={instanceMaxStrength} colorVar={colorVar} />}
+                                    {instanceMaxCharges !== undefined && <ItemProgressBar label="Charges" current={instanceCurrentCharges || 0} max={instanceMaxCharges} colorVar={colorVar} />}
+                                    {instanceMaxUses !== undefined && <ItemProgressBar label="Uses" current={instanceCurrentUses || 0} max={instanceMaxUses} colorVar={colorVar} />}
+                                    {instanceMaxAlerts !== undefined && <ItemProgressBar label="Alerts" current={instanceCurrentAlerts || 0} max={instanceMaxAlerts} colorVar={colorVar} />}
                                 </>
                             )}
                         </div>

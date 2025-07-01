@@ -541,9 +541,7 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
     const handleCarouselItemClick = useCallback((clickedItem: DisplayItem) => {
         stopRotation();
         if (clickedItem.stackType === 'individual' && clickedItem.baseItem) {
-            // --- THIS IS THE KEY CHANGE ---
-            // Instead of opening a TOD Window, open the new Item Slider Window.
-            // We need to find all items of the same type and level in inventory.
+            
             const allInstances = Object.values(playerInventory)
                 .filter(invItem => invItem.id === clickedItem.baseItem!.id)
                 .flatMap(invItem =>
@@ -551,9 +549,9 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
                 );
 
             const displayItemsForSlider = allInstances.map((inst, i) => {
-                 // This logic should mirror how individual DisplayItems are created
+                 
                  const baseDef = getItemById(inst.id);
-                 if (!baseDef) return null; // Should not happen if filtered correctly above
+                 if (!baseDef) return null; 
 
                  let displayTextLabel: string | undefined = undefined;
                  let hasBar = false;
@@ -575,34 +573,33 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
                  }
 
                  return {
-                     id: `${inst.id}_slider_${i}`, // Unique ID for each instance in the slider
+                     id: `${inst.id}_slider_${i}`, 
                      baseItem: baseDef,
                      title: baseDef.title || baseDef.name,
-                     quantityInStack: 1, // Always 1 for individual items in slider
+                     quantityInStack: 1, 
                      imageSrc: baseDef.tileImageSrc || baseDef.imageSrc || FALLBACK_IMAGE_SRC,
                      colorVar: ITEM_LEVEL_COLORS_CSS_VARS[baseDef.level] || 'var(--level-1-color)',
                      levelForVisuals: baseDef.level,
                      stackType: 'individual',
-                     path: clickedItem.path, // Maintain the path from the clicked item for consistency
+                     path: clickedItem.path, 
                      dataAiHint: baseDef.dataAiHint,
                      displayTextLabel,
                      instanceCurrentStrength: hasBar ? inst.currentStrength : undefined,
                      instanceMaxStrength: hasBar ? baseDef.strength?.max : undefined,
-                     instanceCurrentCharges: hasBar ? (inst as any).currentCharges : undefined,
-                     instanceMaxCharges: hasBar ? (baseDef as any).maxCharges : undefined,
-                     instanceCurrentAlerts: hasBar ? (inst as any).currentAlerts : undefined,
-                     instanceMaxAlerts: hasBar ? (baseDef as any).maxAlerts : undefined,
+                     instanceCurrentCharges: hasBar ? inst.currentCharges : undefined,
+                     instanceMaxCharges: hasBar ? baseDef.maxCharges : undefined,
+                     instanceCurrentAlerts: hasBar ? inst.currentAlerts : undefined,
+                     instanceMaxAlerts: hasBar ? baseDef.maxAlerts : undefined,
                  } as DisplayItem;
-            }).filter((item): item is DisplayItem => item !== null); // Filter out any nulls
+            }).filter((item): item is DisplayItem => item !== null); 
 
-            // Find the index of the specific item clicked to start there
+            
             const initialIndex = displayItemsForSlider.findIndex(d => d.id.startsWith(clickedItem.id));
 
             openItemSlider(
                 "Item Details",
                 displayItemsForSlider,
-                { type: 'locker', itemLevel: clickedItem.baseItem.level },
-                initialIndex >= 0 ? initialIndex : 0
+                { type: 'locker', itemLevel: clickedItem.baseItem.level }
             );
 
         } else {
