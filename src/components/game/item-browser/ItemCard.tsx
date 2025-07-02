@@ -11,13 +11,15 @@ import { ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL } from '@/lib/constants';
 
 const ItemProgressBar: React.FC<{ label?: string; current: number; max: number; colorVar: string }> = ({ label, current, max, colorVar }) => {
     const percentage = max > 0 ? Math.min(100, Math.max(0, (current / max) * 100)) : 0;
-    // Check if the color var matches level 3 raw HSL
     const isLevel3 = colorVar === ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL[3];
     const textColor = isLevel3 ? 'text-black' : 'text-white';
 
     return (
-        <div className="w-full h-5 rounded-full bg-muted/30 overflow-hidden relative flex items-center justify-center border border-black/20 my-1">
-            <div className="absolute left-0 top-0 h-full" style={{ backgroundColor: `hsl(${colorVar})` }} />
+        <div className="w-full h-5 rounded-full bg-black/50 overflow-hidden relative flex items-center justify-center border border-black/20 my-1 backdrop-blur-sm">
+            <div
+                className="absolute left-0 top-0 h-full"
+                style={{ backgroundColor: `hsl(${colorVar})`, width: `${percentage}%` }}
+            />
             <div className={cn("relative z-10 text-xs font-bold mix-blend-overlay", textColor)}>
                 {label} {current}/{max}
             </div>
@@ -118,7 +120,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
         let isFull = true;
 
         if (baseItem) {
-            isRechargeable = (baseItem.type === 'Rechargeable') || 
+            isRechargeable = (baseItem.type === 'Rechargeable') ||
                              (baseItem.category === 'Hardware' && (baseItem.maxRechargeInitiations || 0) > 0) ||
                              (baseItem.category === 'Nexus Upgrades' && baseItem.durability === 'Rechargeable');
 
@@ -160,39 +162,24 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
     };
 
     const levelColorHsl = `hsl(${colorVar})`;
-    const levelColorHsla = `hsla(${colorVar}, 0.2)`;
+    const levelColorHsla = `hsla(${colorVar}, 0.3)`;
 
     return (
-        <div 
-            className="w-full h-full flex flex-col overflow-hidden rounded-xl border-2 whitespace-normal" 
-            style={{ 
-                borderColor: levelColorHsl, 
-                backgroundColor: levelColorHsla,
-            }}
+        <div
+            className="w-full h-full flex flex-col overflow-hidden rounded-xl border-2 whitespace-normal"
+            style={{ borderColor: levelColorHsl }}
         >
             <ScrollArea className="w-full h-full">
-                <div className="w-[215px]">
-                    {/* Image Container */}
-                    <div className="relative w-full aspect-square bg-black/30 flex-shrink-0">
+                <div className="w-[215px]" style={{ backgroundColor: levelColorHsla }}>
+                    <div className="relative w-full aspect-square flex-shrink-0">
                         <img
                             src={imageSrc}
                             alt={title}
                             className="absolute inset-0 w-full h-full object-contain"
                         />
-                    </div>
-                    
-                    {/* Content Wrapper with padding */}
-                    <div className="w-full px-3 pb-3 space-y-3">
-                        
-                        {/* Title */}
-                        <h2 className="text-lg font-orbitron text-center mt-2 w-full break-words" style={{ color: levelColorHsl }}>
-                            {title}
-                        </h2>
-
-                        {/* Progress/Text Label Area */}
-                        <div className="min-h-[2.5rem] flex flex-col justify-center items-center space-y-1 p-1">
+                        <div className="absolute bottom-1 left-1 right-1 px-1">
                             {displayTextLabel ? (
-                                <p className="text-center font-semibold text-muted-foreground">{displayTextLabel}</p>
+                                <p className="text-center font-semibold text-white/80 bg-black/30 rounded p-1 text-xs backdrop-blur-sm">{displayTextLabel}</p>
                             ) : (
                                 <>
                                     {instanceMaxStrength !== undefined && <ItemProgressBar label="Strength" current={instanceCurrentStrength || 0} max={instanceMaxStrength} colorVar={colorVar} />}
@@ -201,13 +188,17 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
                                 </>
                             )}
                         </div>
+                    </div>
 
-                        {/* Buttons Section */}
+                    <div className="w-full px-3 pb-3 space-y-3">
+                        <h2 className="text-lg font-orbitron text-center mt-2 w-full break-words" style={{ color: levelColorHsl }}>
+                            {title}
+                        </h2>
+
                         <div className="flex-shrink-0">
                           {renderButtons()}
                         </div>
-                        
-                        {/* Description Section */}
+
                         <div className="space-y-2 text-sm text-muted-foreground border-t border-border/50 pt-3">
                             <p className="w-full break-words">{baseItem?.description}</p>
                             {baseItem?.strength && <p><span className="font-semibold text-foreground">Strength:</span> {baseItem.strength.max}</p>}

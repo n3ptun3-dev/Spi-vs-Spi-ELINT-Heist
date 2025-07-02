@@ -312,86 +312,88 @@ export function VaultSection({ parallaxOffset }: SectionProps) {
             STATUS: {isSecure ? "SECURE" : "NOT SECURED"}
         </div>
 
-        <div className="flex-grow w-full flex items-center justify-center aspect-square max-h-[70vh] max-w-[70vh]">
-          <svg viewBox="0 0 100 100" className="absolute w-1/2 h-1/2 animate-spin-slow opacity-70" style={{ animationDuration: '20s'}}>
-            <polygon
-              points="50,5 95,27.5 95,72.5 50,95 5,72.5 5,27.5"
-              stroke={centralHexagonColor}
-              strokeWidth="2"
-              fill="hsla(var(--background-hsl), 0.3)"
-              className="icon-glow"
-              style={{ filter: `drop-shadow(0 0 5px ${centralHexagonColor})`}}
-            />
-          </svg>
+        <div className="w-full flex-grow flex items-center justify-center">
+            <div className="relative w-full aspect-square max-h-[70vh] max-w-[70vh]">
+              <svg viewBox="0 0 100 100" className="absolute w-1/2 h-1/2 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-spin-slow opacity-70" style={{ animationDuration: '20s'}}>
+                <polygon
+                  points="50,5 95,27.5 95,72.5 50,95 5,72.5 5,27.5"
+                  stroke={centralHexagonColor}
+                  strokeWidth="2"
+                  fill="hsla(var(--background-hsl), 0.3)"
+                  className="icon-glow"
+                  style={{ filter: `drop-shadow(0 0 5px ${centralHexagonColor})`}}
+                />
+              </svg>
 
-          <svg viewBox="0 0 100 100" className="absolute w-1/2 h-1/2 animate-spin-slow opacity-70" style={{ animationDuration: '20s', animationDirection: 'reverse'}}>
-            <polygon
-              points="50,5 95,27.5 95,72.5 50,95 5,72.5 5,27.5"
-              stroke={centralHexagonColor}
-              strokeWidth="2"
-              fill="transparent"
-              className="icon-glow"
-              style={{ filter: `drop-shadow(0 0 5px ${centralHexagonColor})`}}
-            />
-          </svg>
+              <svg viewBox="0 0 100 100" className="absolute w-1/2 h-1/2 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-spin-slow opacity-70" style={{ animationDuration: '20s', animationDirection: 'reverse'}}>
+                <polygon
+                  points="50,5 95,27.5 95,72.5 50,95 5,72.5 5,27.5"
+                  stroke={centralHexagonColor}
+                  strokeWidth="2"
+                  fill="transparent"
+                  className="icon-glow"
+                  style={{ filter: `drop-shadow(0 0 5px ${centralHexagonColor})`}}
+                />
+              </svg>
 
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
-            <Sigma className="w-8 h-8 md:w-10 md:h-10 text-primary icon-glow opacity-60 mb-1" />
-            <p className="text-3xl md:text-4xl font-digital7 font-bold holographic-text text-primary leading-none">
-              {(playerStats.elintReserves ?? 0).toLocaleString()}
-            </p>
-            <p className="text-sm text-muted-foreground font-rajdhani uppercase tracking-wider">ELINT</p>
-          </div>
-
-          {[...displayLockSlots, ...displayUpgradeSlots].map((slot, index) => {
-            const totalSlots = MAX_LOCK_SLOTS + MAX_UPGRADE_SLOTS;
-            const angle = (index / totalSlots) * 360 - 90;
-            const radius = '38%';
-            const x = `calc(50% + ${radius} * ${Math.cos(angle * Math.PI / 180)})`;
-            const y = `calc(50% + ${radius} * ${Math.sin(angle * Math.PI / 180)})`;
-
-            const itemDetails = slot.item ? getBaseItemByIdFromGameItems(slot.item.id) : null;
-            const itemColor = itemDetails ? `hsl(${ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL[itemDetails.level]})` : 'hsl(var(--muted-hsl))';
-            
-            return (
-              <div
-                key={slot.id}
-                className={cn(
-                  "absolute w-16 h-16 md:w-20 md:h-20 rounded-md border-2 cursor-pointer transition-all hover:scale-110 hover:shadow-lg",
-                  "flex flex-col items-center justify-center text-center overflow-hidden"
-                )}
-                style={{
-                  left: x,
-                  top: y,
-                  transform: 'translate(-50%, -50%)',
-                  borderColor: itemColor,
-                  boxShadow: slot.item ? `0 0 10px ${itemColor}, inset 0 0 5px ${itemColor}` : `0 0 5px ${itemColor}`,
-                  backgroundColor: `hsla(0, 0%, 0%, 0.3)`,
-                }}
-                onClick={(e) => slot.item ? handleFilledSlotClick(e, slot) : handleEmptySlotClick(e, slot)}
-              >
-                {slot.item && itemDetails ? (
-                  <>
-                    <img src={itemDetails.imageSrc || '/placeholder-icon.png'} alt={itemDetails.name} className="absolute inset-0 w-full h-full object-cover" />
-                    {itemDetails.strength && (
-                      <div className="absolute bottom-1 left-1 right-1 h-2 bg-black/50 rounded-full overflow-hidden">
-                        <div className="h-full bg-green-500" style={{ width: `${(slot.item.currentStrength || 0) / itemDetails.strength.max * 100}%`}}></div>
-                      </div>
-                    )}
-                    {slot.fortifier && (
-                      <div className="absolute top-1 right-1 w-6 h-6 rounded-full border-2" style={{borderColor: `hsl(${ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL[getBaseItemByIdFromGameItems(slot.fortifier.id)!.level]})`}}>
-                         <img src={getBaseItemByIdFromGameItems(slot.fortifier.id)?.imageSrc} alt="Fortifier" className="w-full h-full object-cover rounded-full" />
-                      </div>
-                    )}
-                  </>
-                ) : slot.type === 'lock' ? (
-                  <Unlock className="w-6 h-6 md:w-8 md:h-8 icon-glow" style={{color: itemColor}}/>
-                ) : (
-                  <ShieldOff className="w-6 h-6 md:w-8 md:h-8 icon-glow" style={{color: itemColor}}/>
-                )}
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
+                <Sigma className="w-8 h-8 md:w-10 md:h-10 text-primary icon-glow opacity-60 mb-1" />
+                <p className="text-3xl md:text-4xl font-digital7 font-bold holographic-text text-primary leading-none">
+                  {(playerStats.elintReserves ?? 0).toLocaleString()}
+                </p>
+                <p className="text-sm text-muted-foreground font-rajdhani uppercase tracking-wider">ELINT</p>
               </div>
-            );
-          })}
+
+              {[...displayLockSlots, ...displayUpgradeSlots].map((slot, index) => {
+                const totalSlots = MAX_LOCK_SLOTS + MAX_UPGRADE_SLOTS;
+                const angle = (index / totalSlots) * 360 - 90;
+                const radius = '38%';
+                const x = `calc(50% + ${radius} * ${Math.cos(angle * Math.PI / 180)})`;
+                const y = `calc(50% + ${radius} * ${Math.sin(angle * Math.PI / 180)})`;
+
+                const itemDetails = slot.item ? getBaseItemByIdFromGameItems(slot.item.id) : null;
+                const itemColor = itemDetails ? `hsl(${ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL[itemDetails.level]})` : 'hsl(var(--muted-hsl))';
+
+                return (
+                  <div
+                    key={slot.id}
+                    className={cn(
+                      "absolute w-16 h-16 md:w-20 md:h-20 rounded-md border-2 cursor-pointer transition-all hover:scale-110 hover:shadow-lg",
+                      "flex flex-col items-center justify-center text-center overflow-hidden"
+                    )}
+                    style={{
+                      left: x,
+                      top: y,
+                      transform: 'translate(-50%, -50%)',
+                      borderColor: itemColor,
+                      boxShadow: slot.item ? `0 0 10px ${itemColor}, inset 0 0 5px ${itemColor}` : `0 0 5px ${itemColor}`,
+                      backgroundColor: `hsla(0, 0%, 0%, 0.3)`,
+                    }}
+                    onClick={(e) => slot.item ? handleFilledSlotClick(e, slot) : handleEmptySlotClick(e, slot)}
+                  >
+                    {slot.item && itemDetails ? (
+                      <>
+                        <img src={itemDetails.imageSrc || '/placeholder-icon.png'} alt={itemDetails.name} className="absolute inset-0 w-full h-full object-cover" />
+                        {itemDetails.strength && (
+                          <div className="absolute bottom-1 left-1 right-1 h-2 bg-black/50 rounded-full overflow-hidden">
+                            <div className="h-full bg-green-500" style={{ width: `${(slot.item.currentStrength || 0) / itemDetails.strength.max * 100}%`}}></div>
+                          </div>
+                        )}
+                        {slot.fortifier && (
+                          <div className="absolute top-1 right-1 w-6 h-6 rounded-full border-2" style={{borderColor: `hsl(${ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL[getBaseItemByIdFromGameItems(slot.fortifier.id)!.level]})`}}>
+                             <img src={getBaseItemByIdFromGameItems(slot.fortifier.id)?.imageSrc} alt="Fortifier" className="w-full h-full object-cover rounded-full" />
+                          </div>
+                        )}
+                      </>
+                    ) : slot.type === 'lock' ? (
+                      <Unlock className="w-6 h-6 md:w-8 md:h-8 icon-glow" style={{color: itemColor}}/>
+                    ) : (
+                      <ShieldOff className="w-6 h-6 md:w-8 md:h-8 icon-glow" style={{color: itemColor}}/>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
         </div>
       </HolographicPanel>
     </div>
