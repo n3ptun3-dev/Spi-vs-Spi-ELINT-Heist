@@ -48,7 +48,6 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
         levelForVisuals,
     } = displayItem;
 
-    // --- TROUBLESHOOTING LOG ---
     React.useEffect(() => {
         console.log(`[ItemCard Render]: title='${displayItem.title}', level=${levelForVisuals}, colorVar='${colorVar}'`);
     }, [displayItem.title, levelForVisuals, colorVar]);
@@ -168,16 +167,20 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
             }}
         >
             <ScrollArea className="flex-grow w-full">
-                <div className="flex flex-col">
-                    {/* Image Section */}
-                    <div className="w-full bg-black/30 flex-shrink-0">
-                        <img src={imageSrc} alt={title} className="w-full h-auto object-contain" />
+                <div className="flex flex-col w-full overflow-x-hidden">
+                    {/* Image Section - Enforce uniform size */}
+                    <div className="w-full aspect-square bg-black/30 flex-shrink-0 relative">
+                        <img
+                            src={imageSrc}
+                            alt={title}
+                            className="absolute inset-0 w-full h-full object-contain"
+                        />
                     </div>
 
                     {/* Details Section: All content below image */}
                     <div className="p-3 space-y-3 font-rajdhani">
                         {/* Title - reduced font size, added word-wrap */}
-                        <h2 className="text-xl font-orbitron text-center" style={{ color: levelColorHsl, wordWrap: 'break-word' }}>
+                        <h2 className="text-l font-orbitron text-center" style={{ color: levelColorHsl, wordWrap: 'break-word' }}>
                             {title}
                         </h2>
 
@@ -202,12 +205,12 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
                         
                         {/* Description Section - text will wrap automatically inside <p> */}
                         <div className="space-y-2 text-sm text-muted-foreground border-t border-border/50 pt-3">
-                            <p>{baseItem?.description}</p>
+                            <p className="break-words">{baseItem?.description}</p>
                             {baseItem?.strength && <p><span className="font-semibold text-foreground">Strength:</span> {baseItem.strength.max}</p>}
                             {baseItem?.resistance && <p><span className="font-semibold text-foreground">Resistance:</span> {baseItem.resistance.max}</p>}
                             {baseItem?.type && <p><span className="font-semibold text-foreground">Type:</span> {baseItem.type}</p>}
                             {baseItem?.scarcity && <p><span className="font-semibold text-foreground">Scarcity:</span> {baseItem.scarcity}</p>}
-                            {baseItem?.lockTypeEffectiveness?.idealCounterAgainst && <p className="mt-2 p-2 border border-green-500/50 rounded-md bg-green-500/10"><span className="font-semibold text-green-300">Effective Against:</span> {baseItem.lockTypeEffectiveness.idealCounterAgainst.join(', ')}</p>}
+                            {baseItem?.lockTypeEffectiveness?.idealCounterAgainst && <p className="mt-2 p-2 border border-green-500/50 rounded-md bg-green-500/10 break-words"><span className="font-semibold text-green-300">Effective Against:</span> {baseItem.lockTypeEffectiveness.idealCounterAgainst.join(', ')}</p>}
                         </div>
                     </div>
 
