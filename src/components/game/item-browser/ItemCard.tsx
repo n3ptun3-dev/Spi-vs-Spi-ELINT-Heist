@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { useAppContext, type DisplayItem, type ItemWindowContext } from '@/contexts/AppContext';
 import { Recycle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL } from '@/lib/constants'; // Using new constant
+import { ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL } from '@/lib/constants';
 
 const ItemProgressBar: React.FC<{ label?: string; current: number; max: number; colorVar: string }> = ({ label, current, max, colorVar }) => {
     const percentage = max > 0 ? Math.min(100, Math.max(0, (current / max) * 100)) : 0;
@@ -39,7 +39,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
         baseItem,
         title,
         imageSrc,
-        colorVar, // This is now a raw HSL string: "H S% L%"
+        colorVar,
         displayTextLabel,
         instanceCurrentStrength, instanceMaxStrength,
         instanceCurrentCharges, instanceMaxCharges,
@@ -166,54 +166,51 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
                 backgroundColor: levelColorHsla,
             }}
         >
-            <ScrollArea className="flex-grow w-full">
-                <div className="flex flex-col w-full overflow-x-hidden">
-                    {/* Image Section - Enforce uniform size */}
-                    <div className="w-full aspect-square bg-black/30 flex-shrink-0 relative">
-                        <img
-                            src={imageSrc}
-                            alt={title}
-                            className="absolute inset-0 w-full h-full object-contain"
-                        />
+            {/* --- FIXED TOP PART (Image) --- */}
+            <div className="w-full aspect-square bg-black/30 flex-shrink-0 relative">
+                <img
+                    src={imageSrc}
+                    alt={title}
+                    className="absolute inset-0 w-full h-full object-contain"
+                />
+            </div>
+            
+            {/* --- SCROLLABLE BOTTOM PART (Details) --- */}
+            <ScrollArea className="flex-grow w-full min-h-0">
+                <div className="p-3 space-y-3 font-rajdhani">
+                    {/* Title */}
+                    <h2 className="text-l font-orbitron text-center" style={{ color: levelColorHsl, wordWrap: 'break-word' }}>
+                        {title}
+                    </h2>
+
+                    {/* Progress/Text Label Area */}
+                    <div className="min-h-[2.5rem] flex flex-col justify-center items-center space-y-1 p-1">
+                        {displayTextLabel ? (
+                             <p className="text-center font-semibold text-muted-foreground">{displayTextLabel}</p>
+                        ) : (
+                            <>
+                                {instanceMaxStrength !== undefined && <ItemProgressBar label="Strength" current={instanceCurrentStrength || 0} max={instanceMaxStrength} colorVar={colorVar} />}
+                                {instanceMaxCharges !== undefined && <ItemProgressBar label="Charges" current={instanceCurrentCharges || 0} max={instanceMaxCharges} colorVar={colorVar} />}
+                                {instanceMaxUses !== undefined && <ItemProgressBar label="Uses" current={instanceCurrentUses || 0} max={instanceMaxUses} colorVar={colorVar} />}
+                                {instanceMaxAlerts !== undefined && <ItemProgressBar label="Alerts" current={instanceCurrentAlerts || 0} max={instanceMaxAlerts} colorVar={colorVar} />}
+                            </>
+                        )}
                     </div>
 
-                    {/* Details Section: All content below image */}
-                    <div className="p-3 space-y-3 font-rajdhani">
-                        {/* Title - reduced font size, added word-wrap */}
-                        <h2 className="text-l font-orbitron text-center" style={{ color: levelColorHsl, wordWrap: 'break-word' }}>
-                            {title}
-                        </h2>
-
-                        {/* Progress/Text Label Area - make sure it fits */}
-                        <div className="min-h-[2.5rem] flex flex-col justify-center items-center space-y-1 p-1">
-                            {displayTextLabel ? (
-                                 <p className="text-center font-semibold text-muted-foreground">{displayTextLabel}</p>
-                            ) : (
-                                <>
-                                    {instanceMaxStrength !== undefined && <ItemProgressBar label="Strength" current={instanceCurrentStrength || 0} max={instanceMaxStrength} colorVar={colorVar} />}
-                                    {instanceMaxCharges !== undefined && <ItemProgressBar label="Charges" current={instanceCurrentCharges || 0} max={instanceMaxCharges} colorVar={colorVar} />}
-                                    {instanceMaxUses !== undefined && <ItemProgressBar label="Uses" current={instanceCurrentUses || 0} max={instanceMaxUses} colorVar={colorVar} />}
-                                    {instanceMaxAlerts !== undefined && <ItemProgressBar label="Alerts" current={instanceCurrentAlerts || 0} max={instanceMaxAlerts} colorVar={colorVar} />}
-                                </>
-                            )}
-                        </div>
-
-                        {/* Buttons Section (Moved Here) */}
-                        <div className="flex-shrink-0">
-                          {renderButtons()}
-                        </div>
-                        
-                        {/* Description Section - text will wrap automatically inside <p> */}
-                        <div className="space-y-2 text-sm text-muted-foreground border-t border-border/50 pt-3">
-                            <p className="break-words">{baseItem?.description}</p>
-                            {baseItem?.strength && <p><span className="font-semibold text-foreground">Strength:</span> {baseItem.strength.max}</p>}
-                            {baseItem?.resistance && <p><span className="font-semibold text-foreground">Resistance:</span> {baseItem.resistance.max}</p>}
-                            {baseItem?.type && <p><span className="font-semibold text-foreground">Type:</span> {baseItem.type}</p>}
-                            {baseItem?.scarcity && <p><span className="font-semibold text-foreground">Scarcity:</span> {baseItem.scarcity}</p>}
-                            {baseItem?.lockTypeEffectiveness?.idealCounterAgainst && <p className="mt-2 p-2 border border-green-500/50 rounded-md bg-green-500/10 break-words"><span className="font-semibold text-green-300">Effective Against:</span> {baseItem.lockTypeEffectiveness.idealCounterAgainst.join(', ')}</p>}
-                        </div>
+                    {/* Buttons Section */}
+                    <div className="flex-shrink-0">
+                      {renderButtons()}
                     </div>
-
+                    
+                    {/* Description Section */}
+                    <div className="space-y-2 text-sm text-muted-foreground border-t border-border/50 pt-3">
+                        <p className="break-words">{baseItem?.description}</p>
+                        {baseItem?.strength && <p><span className="font-semibold text-foreground">Strength:</span> {baseItem.strength.max}</p>}
+                        {baseItem?.resistance && <p><span className="font-semibold text-foreground">Resistance:</span> {baseItem.resistance.max}</p>}
+                        {baseItem?.type && <p><span className="font-semibold text-foreground">Type:</span> {baseItem.type}</p>}
+                        {baseItem?.scarcity && <p><span className="font-semibold text-foreground">Scarcity:</span> {baseItem.scarcity}</p>}
+                        {baseItem?.lockTypeEffectiveness?.idealCounterAgainst && <p className="mt-2 p-2 border border-green-500/50 rounded-md bg-green-500/10 break-words"><span className="font-semibold text-green-300">Effective Against:</span> {baseItem.lockTypeEffectiveness.idealCounterAgainst.join(', ')}</p>}
+                    </div>
                 </div>
             </ScrollArea>
         </div>
