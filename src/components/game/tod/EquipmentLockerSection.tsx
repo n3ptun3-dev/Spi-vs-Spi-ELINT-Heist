@@ -8,7 +8,7 @@ import { useAppContext, type GameItemBase, type ItemLevel, type ItemCategory, ty
 import { HolographicButton, HolographicPanel } from '@/components/game/shared/HolographicPanel';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
-import { ITEM_LEVEL_COLORS_CSS_VARS } from '@/lib/constants';
+import { ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL } from '@/lib/constants';
 import { SHOP_CATEGORIES as APP_SHOP_CATEGORIES, getItemById as getBaseItemByIdFromGameItems } from '@/lib/game-items';
 import { ShoppingCart } from 'lucide-react';
 import CardTextureRenderer, { FALLBACK_IMAGE_SRC } from './CardTextureRenderer';
@@ -284,7 +284,7 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
                 title: baseDef.title || baseDef.name,
                 quantityInStack: 1,
                 imageSrc: baseDef.tileImageSrc || baseDef.imageSrc || FALLBACK_IMAGE_SRC,
-                colorVar: ITEM_LEVEL_COLORS_CSS_VARS[baseDef.level] || ITEM_LEVEL_COLORS_CSS_VARS[1],
+                colorVar: ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL[baseDef.level] || ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL[1],
                 levelForVisuals: baseDef.level,
                 stackType: 'individual',
                 path,
@@ -321,7 +321,7 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
                 title: stackTitle,
                 quantityInStack: totalQuantity,
                 imageSrc: highestLevelItem.tileImageSrc || highestLevelItem.imageSrc || FALLBACK_IMAGE_SRC,
-                colorVar: ITEM_LEVEL_COLORS_CSS_VARS[highestLevelItem.level] || ITEM_LEVEL_COLORS_CSS_VARS[1],
+                colorVar: ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL[highestLevelItem.level] || ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL[1],
                 levelForVisuals: highestLevelItem.level,
                 stackType,
                 path,
@@ -477,7 +477,7 @@ export const EquipmentLockerSection: React.FC<SectionProps> = ({ parallaxOffset 
                      title: baseDef.title || baseDef.name,
                      quantityInStack: 1,
                      imageSrc: baseDef.tileImageSrc || baseDef.imageSrc || FALLBACK_IMAGE_SRC,
-                     colorVar: ITEM_LEVEL_COLORS_CSS_VARS[baseDef.level] || ITEM_LEVEL_COLORS_CSS_VARS[1],
+                     colorVar: ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL[baseDef.level] || ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL[1],
                      levelForVisuals: baseDef.level,
                      stackType: 'individual',
                      path: clickedItem.path,
