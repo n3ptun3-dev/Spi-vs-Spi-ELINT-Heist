@@ -11,6 +11,7 @@ import { ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL } from '@/lib/constants';
 
 const ItemProgressBar: React.FC<{ label?: string; current: number; max: number; colorVar: string }> = ({ label, current, max, colorVar }) => {
     const percentage = max > 0 ? Math.min(100, Math.max(0, (current / max) * 100)) : 0;
+    // Check if the color var matches level 3 raw HSL
     const isLevel3 = colorVar === ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL[3];
     const textColor = isLevel3 ? 'text-black' : 'text-white';
 
@@ -162,17 +163,17 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
     const levelColorHsla = `hsla(${colorVar}, 0.2)`;
 
     return (
-        <div
-            className="w-full h-full flex flex-col overflow-hidden rounded-xl border-2"
-            style={{
-                borderColor: levelColorHsl,
+        <div 
+            className="w-full h-full flex flex-col overflow-hidden rounded-xl border-2" 
+            style={{ 
+                borderColor: levelColorHsl, 
                 backgroundColor: levelColorHsla,
             }}
         >
             <ScrollArea className="w-full h-full">
-                <div className="p-3 space-y-3 font-rajdhani">
-                    {/* Image Area */}
-                    <div className="w-full aspect-square bg-black/30 flex-shrink-0 relative rounded-md overflow-hidden">
+                <div className="font-rajdhani">
+                    {/* Image Container - No padding */}
+                    <div className="w-full aspect-square bg-black/30 flex-shrink-0 relative overflow-hidden">
                         <img
                             src={imageSrc}
                             alt={title}
@@ -180,37 +181,40 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
                         />
                     </div>
                     
-                    {/* Title */}
-                    <h2 className="text-lg font-orbitron text-center" style={{ color: levelColorHsl, wordWrap: 'break-word' }}>
-                        {title}
-                    </h2>
+                    {/* Content Wrapper with padding */}
+                    <div className="px-3 pb-3 space-y-3">
+                        {/* Title */}
+                        <h2 className="text-lg font-orbitron text-center mt-2" style={{ color: levelColorHsl, wordWrap: 'break-word' }}>
+                            {title}
+                        </h2>
 
-                    {/* Progress/Text Label Area */}
-                    <div className="min-h-[2.5rem] flex flex-col justify-center items-center space-y-1 p-1">
-                        {displayTextLabel ? (
-                             <p className="text-center font-semibold text-muted-foreground">{displayTextLabel}</p>
-                        ) : (
-                            <>
-                                {instanceMaxStrength !== undefined && <ItemProgressBar label="Strength" current={instanceCurrentStrength || 0} max={instanceMaxStrength} colorVar={colorVar} />}
-                                {instanceMaxCharges !== undefined && <ItemProgressBar label="Charges" current={instanceCurrentCharges || 0} max={instanceMaxCharges} colorVar={colorVar} />}
-                                {instanceMaxUses !== undefined && <ItemProgressBar label="Uses" current={instanceCurrentUses || 0} max={instanceMaxUses} colorVar={colorVar} />}
-                            </>
-                        )}
-                    </div>
+                        {/* Progress/Text Label Area */}
+                        <div className="min-h-[2.5rem] flex flex-col justify-center items-center space-y-1 p-1">
+                            {displayTextLabel ? (
+                                <p className="text-center font-semibold text-muted-foreground">{displayTextLabel}</p>
+                            ) : (
+                                <>
+                                    {instanceMaxStrength !== undefined && <ItemProgressBar label="Strength" current={instanceCurrentStrength || 0} max={instanceMaxStrength} colorVar={colorVar} />}
+                                    {instanceMaxCharges !== undefined && <ItemProgressBar label="Charges" current={instanceCurrentCharges || 0} max={instanceMaxCharges} colorVar={colorVar} />}
+                                    {instanceMaxUses !== undefined && <ItemProgressBar label="Uses" current={instanceCurrentUses || 0} max={instanceMaxUses} colorVar={colorVar} />}
+                                </>
+                            )}
+                        </div>
 
-                    {/* Buttons Section */}
-                    <div className="flex-shrink-0">
-                      {renderButtons()}
-                    </div>
-                    
-                    {/* Description Section */}
-                    <div className="space-y-2 text-sm text-muted-foreground border-t border-border/50 pt-3">
-                        <p className="break-words">{baseItem?.description}</p>
-                        {baseItem?.strength && <p><span className="font-semibold text-foreground">Strength:</span> {baseItem.strength.max}</p>}
-                        {baseItem?.resistance && <p><span className="font-semibold text-foreground">Resistance:</span> {baseItem.resistance.max}</p>}
-                        {baseItem?.type && <p><span className="font-semibold text-foreground">Type:</span> {baseItem.type}</p>}
-                        {baseItem?.scarcity && <p><span className="font-semibold text-foreground">Scarcity:</span> {baseItem.scarcity}</p>}
-                        {baseItem?.lockTypeEffectiveness?.idealCounterAgainst && <p className="mt-2 p-2 border border-green-500/50 rounded-md bg-green-500/10 break-words"><span className="font-semibold text-green-300">Effective Against:</span> {baseItem.lockTypeEffectiveness.idealCounterAgainst.join(', ')}</p>}
+                        {/* Buttons Section */}
+                        <div className="flex-shrink-0">
+                          {renderButtons()}
+                        </div>
+                        
+                        {/* Description Section */}
+                        <div className="space-y-2 text-sm text-muted-foreground border-t border-border/50 pt-3">
+                            <p className="break-words">{baseItem?.description}</p>
+                            {baseItem?.strength && <p><span className="font-semibold text-foreground">Strength:</span> {baseItem.strength.max}</p>}
+                            {baseItem?.resistance && <p><span className="font-semibold text-foreground">Resistance:</span> {baseItem.resistance.max}</p>}
+                            {baseItem?.type && <p><span className="font-semibold text-foreground">Type:</span> {baseItem.type}</p>}
+                            {baseItem?.scarcity && <p><span className="font-semibold text-foreground">Scarcity:</span> {baseItem.scarcity}</p>}
+                            {baseItem?.lockTypeEffectiveness?.idealCounterAgainst && <p className="mt-2 p-2 border border-green-500/50 rounded-md bg-green-500/10 break-words"><span className="font-semibold text-green-300">Effective Against:</span> {baseItem.lockTypeEffectiveness.idealCounterAgainst.join(', ')}</p>}
+                        </div>
                     </div>
                 </div>
             </ScrollArea>
