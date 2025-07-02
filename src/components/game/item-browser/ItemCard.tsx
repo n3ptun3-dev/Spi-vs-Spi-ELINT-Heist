@@ -164,14 +164,14 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
 
     return (
         <div 
-            className="w-full h-full flex flex-col overflow-hidden rounded-xl border-2" 
+            className="w-full h-full flex flex-col overflow-hidden rounded-xl border-2 whitespace-normal" 
             style={{ 
                 borderColor: levelColorHsl, 
                 backgroundColor: levelColorHsla,
             }}
         >
             <ScrollArea className="w-full h-full">
-                <div className="w-[215px] font-rajdhani">
+                <div className="w-[215px]">
                     {/* Image Container */}
                     <div className="relative w-full aspect-square bg-black/30 flex-shrink-0">
                         <img
@@ -183,6 +183,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
                     
                     {/* Content Wrapper with padding */}
                     <div className="w-full px-3 pb-3 space-y-3">
+                        
                         {/* Title */}
                         <h2 className="text-lg font-orbitron text-center mt-2 w-full break-words" style={{ color: levelColorHsl }}>
                             {title}

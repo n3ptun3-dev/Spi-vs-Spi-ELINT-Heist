@@ -36,8 +36,8 @@ const rajdhani = Rajdhani({
 });
 
 export const metadata: Metadata = {
-  title: 'Elint Heist TOD',
-  description: 'Tactical Overlay Device for Spi Vs Spi: Elint Heist',
+  title: 'Spi vs Spi: Elint Heist',
+  description: 'Every Pioneer becomes a spy in this MMO game hub where you steal ELINT, defend your faction, and play mini-games to dominate the network!',
 };
 
 export default function RootLayout({
