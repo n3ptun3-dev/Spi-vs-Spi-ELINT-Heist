@@ -160,8 +160,6 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
     const levelColorHsla = `hsla(${colorVar}, 0.2)`;
 
     return (
-        // The main card container. It must be a flex column to arrange its parts vertically.
-        // `h-full` here is crucial for the card to take up the full height of its parent (the slider item).
         <div
             className="w-full h-full flex flex-col overflow-hidden rounded-xl border-2"
             style={{
@@ -169,24 +167,22 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
                 backgroundColor: levelColorHsla,
             }}
         >
-            {/* The ScrollArea now wraps ALL the content that needs to scroll */}
-            {/* It uses flex-grow to take up all available space within the card */}
             <ScrollArea className="flex-grow w-full">
-                {/* This inner div acts as the content container for the ScrollArea */}
-                {/* It's a flex column to stack the image, details, and buttons vertically */}
                 <div className="flex flex-col">
                     {/* Image Section */}
                     <div className="w-full bg-black/30 flex-shrink-0">
                         <img src={imageSrc} alt={title} className="w-full h-auto object-contain" />
                     </div>
 
-                    {/* Details Section: Title, Stats, Description */}
+                    {/* Details Section: All content below image */}
                     <div className="p-3 space-y-3 font-rajdhani">
+                        {/* Title - reduced font size, added word-wrap */}
                         <h2 className="text-xl font-orbitron text-center" style={{ color: levelColorHsl, wordWrap: 'break-word' }}>
                             {title}
                         </h2>
 
-                        <div className="min-h-[4rem] flex flex-col justify-center items-center space-y-1 p-1">
+                        {/* Progress/Text Label Area - make sure it fits */}
+                        <div className="min-h-[2.5rem] flex flex-col justify-center items-center space-y-1 p-1">
                             {displayTextLabel ? (
                                  <p className="text-center font-semibold text-muted-foreground">{displayTextLabel}</p>
                             ) : (
@@ -199,6 +195,12 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
                             )}
                         </div>
 
+                        {/* Buttons Section (Moved Here) */}
+                        <div className="flex-shrink-0">
+                          {renderButtons()}
+                        </div>
+                        
+                        {/* Description Section - text will wrap automatically inside <p> */}
                         <div className="space-y-2 text-sm text-muted-foreground border-t border-border/50 pt-3">
                             <p>{baseItem?.description}</p>
                             {baseItem?.strength && <p><span className="font-semibold text-foreground">Strength:</span> {baseItem.strength.max}</p>}
@@ -209,10 +211,6 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
                         </div>
                     </div>
 
-                    {/* Buttons Section */}
-                    <div className="p-3 border-t border-border/50 flex-shrink-0">
-                      {renderButtons()}
-                    </div>
                 </div>
             </ScrollArea>
         </div>

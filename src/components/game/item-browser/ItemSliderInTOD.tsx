@@ -33,9 +33,9 @@ export const ItemSliderInTOD: React.FC<ItemSliderInTODProps> = ({
     <div className="w-full h-full flex flex-col p-0">
       {items.length > 0 ? (
         <ScrollArea className="w-full h-full whitespace-nowrap">
-            <div className="flex h-full items-center space-x-4 px-2 py-2">
+            <div className="flex h-full items-center space-x-4 py-2">
                 {items.map((item) => (
-                    <div key={item.id} className="h-[450px] w-[300px] flex-shrink-0">
+                    <div key={item.id} className="h-[323px] w-[215px] flex-shrink-0">
                         <ItemCard displayItem={item} context={context} onClose={onClose} />
                     </div>
                 ))}
