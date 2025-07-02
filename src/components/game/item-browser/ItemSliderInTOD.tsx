@@ -1,4 +1,3 @@
-
 // src/components/game/item-browser/ItemSliderInTOD.tsx
 "use client";
 
@@ -34,10 +33,9 @@ export const ItemSliderInTOD: React.FC<ItemSliderInTODProps> = ({
     <div className="w-full h-full flex flex-col p-0">
       {items.length > 0 ? (
         <ScrollArea className="w-full h-full whitespace-nowrap">
-            <div className="flex space-x-4 h-full py-2 px-2">
+            <div className="flex h-full items-center space-x-4 px-2 py-2">
                 {items.map((item) => (
-                    <div key={item.id} className="h-full inline-block flex-shrink-0 w-[80vw] max-w-[320px]"
-                    style={{ height: '450px' }}>
+                    <div key={item.id} className="h-[450px] w-[300px] flex-shrink-0">
                         <ItemCard displayItem={item} context={context} onClose={onClose} />
                     </div>
                 ))}
