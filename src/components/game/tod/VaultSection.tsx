@@ -8,7 +8,7 @@ import { ShieldCheck, ShieldOff, ShieldAlert, Edit3, Lock, Unlock, Sigma, MoreVe
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext'; // Import useTheme
 import { getItemById as getBaseItemByIdFromGameItems } from '@/lib/game-items'; // Ensure getItemById is imported
-import { ITEM_LEVEL_COLORS_CSS_VARS } from '@/lib/constants';
+import { ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL } from '@/lib/constants';
 import { FALLBACK_IMAGE_SRC } from './CardTextureRenderer';
 
 
@@ -70,7 +70,7 @@ export function VaultSection({ parallaxOffset }: SectionProps) {
       title: baseItem.title || baseItem.name,
       quantityInStack: invItem.quantity,
       imageSrc: baseItem.tileImageSrc || baseItem.imageSrc || FALLBACK_IMAGE_SRC,
-      colorVar: ITEM_LEVEL_COLORS_CSS_VARS[baseItem.level] || 'var(--level-1-color)',
+      colorVar: ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL[baseItem.level] || ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL[1],
       levelForVisuals: baseItem.level,
       stackType: 'individual',
       path: [],
@@ -312,7 +312,7 @@ export function VaultSection({ parallaxOffset }: SectionProps) {
             STATUS: {isSecure ? "SECURE" : "NOT SECURED"}
         </div>
 
-        <div className="relative flex-grow w-full flex items-center justify-center aspect-square max-h-[70vh] max-w-[70vh]">
+        <div className="flex-grow w-full flex items-center justify-center aspect-square max-h-[70vh] max-w-[70vh]">
           <svg viewBox="0 0 100 100" className="absolute w-1/2 h-1/2 animate-spin-slow opacity-70" style={{ animationDuration: '20s'}}>
             <polygon
               points="50,5 95,27.5 95,72.5 50,95 5,72.5 5,27.5"
@@ -351,7 +351,7 @@ export function VaultSection({ parallaxOffset }: SectionProps) {
             const y = `calc(50% + ${radius} * ${Math.sin(angle * Math.PI / 180)})`;
 
             const itemDetails = slot.item ? getBaseItemByIdFromGameItems(slot.item.id) : null;
-            const itemColor = itemDetails ? `hsl(${ITEM_LEVEL_COLORS_CSS_VARS[itemDetails.level]})` : 'hsl(var(--muted-hsl))';
+            const itemColor = itemDetails ? `hsl(${ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL[itemDetails.level]})` : 'hsl(var(--muted-hsl))';
             
             return (
               <div
@@ -379,7 +379,7 @@ export function VaultSection({ parallaxOffset }: SectionProps) {
                       </div>
                     )}
                     {slot.fortifier && (
-                      <div className="absolute top-1 right-1 w-6 h-6 rounded-full border-2" style={{borderColor: `hsl(${ITEM_LEVEL_COLORS_CSS_VARS[getBaseItemByIdFromGameItems(slot.fortifier.id)!.level]})`}}>
+                      <div className="absolute top-1 right-1 w-6 h-6 rounded-full border-2" style={{borderColor: `hsl(${ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL[getBaseItemByIdFromGameItems(slot.fortifier.id)!.level]})`}}>
                          <img src={getBaseItemByIdFromGameItems(slot.fortifier.id)?.imageSrc} alt="Fortifier" className="w-full h-full object-cover rounded-full" />
                       </div>
                     )}
