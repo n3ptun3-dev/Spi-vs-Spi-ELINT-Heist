@@ -60,7 +60,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
             onClose();
         }
     };
-    
+
     const handleUpgrade = () => {
         if(context.type === 'upgrade_lock' && displayItem.baseItem && context.currentLock) {
             showConfirmation({
@@ -77,7 +77,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
             });
         }
     }
-    
+
     const handleFortify = () => {
         if (context.type === 'fortify_lock' && displayItem.baseItem) {
              fortifyLockSlot(context.vaultSlotId, displayItem.baseItem.id);
@@ -115,14 +115,14 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
             }
         });
     };
-    
+
     const renderButtons = () => {
         let isRechargeable = false;
         let isFull = false;
 
         if (baseItem) {
             isRechargeable = baseItem.type === 'Rechargeable' || (baseItem.category === 'Hardware' && baseItem.maxRechargeInitiations && baseItem.maxRechargeInitiations > 0) || (baseItem.category === 'Nexus Upgrades' && baseItem.durability === 'Rechargeable');
-            
+
             const current = instanceCurrentStrength ?? instanceCurrentCharges ?? instanceCurrentUses ?? instanceCurrentAlerts;
             const max = instanceMaxStrength ?? instanceMaxCharges ?? instanceMaxUses ?? instanceMaxAlerts;
             isFull = current !== undefined && max !== undefined && current >= max;
@@ -160,53 +160,61 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
     const levelColorHsla = `hsla(${colorVar}, 0.2)`;
 
     return (
-        <div 
-            className="w-full h-full flex flex-col overflow-hidden rounded-xl border-2" 
-            style={{ 
-                borderColor: levelColorHsl, 
+        // The main card container. It must be a flex column to arrange its parts vertically.
+        // `h-full` here is crucial for the card to take up the full height of its parent (the slider item).
+        <div
+            className="w-full h-full flex flex-col overflow-hidden rounded-xl border-2"
+            style={{
+                borderColor: levelColorHsl,
                 backgroundColor: levelColorHsla,
             }}
         >
-            {/* Fixed Top Part: Image */}
-            <div className="w-full bg-black/30 flex-shrink-0">
-                <img src={imageSrc} alt={title} className="w-full h-auto object-contain" />
-            </div>
-
-            {/* Scrollable Middle Part: Title, Stats, Description */}
-            <ScrollArea className="flex-grow w-full h-full">
-                <div className="p-3 space-y-3 font-rajdhani">
-                    <h2 className="text-xl font-orbitron text-center" style={{ color: levelColorHsl, wordWrap: 'break-word' }}>
-                        {title}
-                    </h2>
-
-                    <div className="min-h-[4rem] flex flex-col justify-center items-center space-y-1 p-1">
-                        {displayTextLabel ? (
-                             <p className="text-center font-semibold text-muted-foreground">{displayTextLabel}</p>
-                        ) : (
-                            <>
-                                {instanceMaxStrength !== undefined && <ItemProgressBar label="Strength" current={instanceCurrentStrength || 0} max={instanceMaxStrength} colorVar={colorVar} />}
-                                {instanceMaxCharges !== undefined && <ItemProgressBar label="Charges" current={instanceCurrentCharges || 0} max={instanceMaxCharges} colorVar={colorVar} />}
-                                {instanceMaxUses !== undefined && <ItemProgressBar label="Uses" current={instanceCurrentUses || 0} max={instanceMaxUses} colorVar={colorVar} />}
-                                {instanceMaxAlerts !== undefined && <ItemProgressBar label="Alerts" current={instanceCurrentAlerts || 0} max={instanceMaxAlerts} colorVar={colorVar} />}
-                            </>
-                        )}
+            {/* The ScrollArea now wraps ALL the content that needs to scroll */}
+            {/* It uses flex-grow to take up all available space within the card */}
+            <ScrollArea className="flex-grow w-full">
+                {/* This inner div acts as the content container for the ScrollArea */}
+                {/* It's a flex column to stack the image, details, and buttons vertically */}
+                <div className="flex flex-col">
+                    {/* Image Section */}
+                    <div className="w-full bg-black/30 flex-shrink-0">
+                        <img src={imageSrc} alt={title} className="w-full h-auto object-contain" />
                     </div>
-                    
-                    <div className="space-y-2 text-sm text-muted-foreground border-t border-border/50 pt-3">
-                        <p>{baseItem?.description}</p>
-                        {baseItem?.strength && <p><span className="font-semibold text-foreground">Strength:</span> {baseItem.strength.max}</p>}
-                        {baseItem?.resistance && <p><span className="font-semibold text-foreground">Resistance:</span> {baseItem.resistance.max}</p>}
-                        {baseItem?.type && <p><span className="font-semibold text-foreground">Type:</span> {baseItem.type}</p>}
-                        {baseItem?.scarcity && <p><span className="font-semibold text-foreground">Scarcity:</span> {baseItem.scarcity}</p>}
-                        {baseItem?.lockTypeEffectiveness?.idealCounterAgainst && <p className="mt-2 p-2 border border-green-500/50 rounded-md bg-green-500/10"><span className="font-semibold text-green-300">Effective Against:</span> {baseItem.lockTypeEffectiveness.idealCounterAgainst.join(', ')}</p>}
+
+                    {/* Details Section: Title, Stats, Description */}
+                    <div className="p-3 space-y-3 font-rajdhani">
+                        <h2 className="text-xl font-orbitron text-center" style={{ color: levelColorHsl, wordWrap: 'break-word' }}>
+                            {title}
+                        </h2>
+
+                        <div className="min-h-[4rem] flex flex-col justify-center items-center space-y-1 p-1">
+                            {displayTextLabel ? (
+                                 <p className="text-center font-semibold text-muted-foreground">{displayTextLabel}</p>
+                            ) : (
+                                <>
+                                    {instanceMaxStrength !== undefined && <ItemProgressBar label="Strength" current={instanceCurrentStrength || 0} max={instanceMaxStrength} colorVar={colorVar} />}
+                                    {instanceMaxCharges !== undefined && <ItemProgressBar label="Charges" current={instanceCurrentCharges || 0} max={instanceMaxCharges} colorVar={colorVar} />}
+                                    {instanceMaxUses !== undefined && <ItemProgressBar label="Uses" current={instanceCurrentUses || 0} max={instanceMaxUses} colorVar={colorVar} />}
+                                    {instanceMaxAlerts !== undefined && <ItemProgressBar label="Alerts" current={instanceCurrentAlerts || 0} max={instanceMaxAlerts} colorVar={colorVar} />}
+                                </>
+                            )}
+                        </div>
+
+                        <div className="space-y-2 text-sm text-muted-foreground border-t border-border/50 pt-3">
+                            <p>{baseItem?.description}</p>
+                            {baseItem?.strength && <p><span className="font-semibold text-foreground">Strength:</span> {baseItem.strength.max}</p>}
+                            {baseItem?.resistance && <p><span className="font-semibold text-foreground">Resistance:</span> {baseItem.resistance.max}</p>}
+                            {baseItem?.type && <p><span className="font-semibold text-foreground">Type:</span> {baseItem.type}</p>}
+                            {baseItem?.scarcity && <p><span className="font-semibold text-foreground">Scarcity:</span> {baseItem.scarcity}</p>}
+                            {baseItem?.lockTypeEffectiveness?.idealCounterAgainst && <p className="mt-2 p-2 border border-green-500/50 rounded-md bg-green-500/10"><span className="font-semibold text-green-300">Effective Against:</span> {baseItem.lockTypeEffectiveness.idealCounterAgainst.join(', ')}</p>}
+                        </div>
+                    </div>
+
+                    {/* Buttons Section */}
+                    <div className="p-3 border-t border-border/50 flex-shrink-0">
+                      {renderButtons()}
                     </div>
                 </div>
             </ScrollArea>
-
-            {/* Fixed Bottom Part: Buttons */}
-            <div className="p-3 border-t border-border/50 flex-shrink-0">
-              {renderButtons()}
-            </div>
         </div>
     );
 };

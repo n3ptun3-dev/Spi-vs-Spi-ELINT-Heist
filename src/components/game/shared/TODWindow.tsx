@@ -1,3 +1,4 @@
+// src/components/game/item-browser/TODWindow.tsx
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -130,7 +131,9 @@ export function TODWindow({
           )}
         </div>
 
-        <div className="flex-grow min-h-0 h-[calc(100%-4rem)] overflow-y-auto scrollbar-hide">
+        {/* This is the key change: removed the fixed height calculation */}
+        {/* Now, this div will simply flex-grow to fill available space */}
+        <div className="flex-grow min-h-0 overflow-y-auto scrollbar-hide">
             {children}
         </div>
       </HolographicPanel>
