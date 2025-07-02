@@ -1,3 +1,4 @@
+
 // src/components/game/item-browser/ItemCard.tsx
 "use client";
 
@@ -50,7 +51,9 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
     } = displayItem;
 
     React.useEffect(() => {
-        console.log(`[ItemCard] Rendering: '${displayItem.title}', Level: ${levelForVisuals}, ColorVar: '${colorVar}'`);
+        const levelColorHsl = `hsl(${colorVar})`;
+        const levelColorHsla = `hsla(${colorVar}, 0.3)`;
+        console.log(`[ItemCard] Rendering: '${displayItem.title}', Level: ${levelForVisuals}, ColorVar: '${colorVar}', HSL: '${levelColorHsl}', HSLA: '${levelColorHsla}'`);
     }, [displayItem.title, levelForVisuals, colorVar]);
 
     const handleDeploy = () => {
@@ -166,11 +169,11 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
 
     return (
         <div
-            className="w-full h-full flex flex-col overflow-hidden rounded-xl border-2 whitespace-normal"
-            style={{ borderColor: levelColorHsl }}
+            className="w-full h-full flex flex-col overflow-hidden rounded-xl border-2 whitespace-normal relative"
+            style={{ borderColor: levelColorHsl, backgroundColor: levelColorHsla }}
         >
             <ScrollArea className="w-full h-full">
-                <div className="w-[215px]" style={{ backgroundColor: levelColorHsla }}>
+                <div className="w-[215px] pb-16">
                     <div className="relative w-full aspect-square flex-shrink-0">
                         <img
                             src={imageSrc}
@@ -190,14 +193,10 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
                         </div>
                     </div>
 
-                    <div className="w-full px-3 pb-3 space-y-3">
+                    <div className="px-3 space-y-3">
                         <h2 className="text-lg font-orbitron text-center mt-2 w-full break-words" style={{ color: levelColorHsl }}>
                             {title}
                         </h2>
-
-                        <div className="flex-shrink-0">
-                          {renderButtons()}
-                        </div>
 
                         <div className="space-y-2 text-sm text-muted-foreground border-t border-border/50 pt-3">
                             <p className="w-full break-words">{baseItem?.description}</p>
@@ -210,6 +209,11 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
                     </div>
                 </div>
             </ScrollArea>
+             <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 via-black/50 to-transparent pointer-events-none">
+                <div className="p-2 rounded-lg bg-black/30 backdrop-blur-sm border border-white/10 pointer-events-auto">
+                    {renderButtons()}
+                </div>
+            </div>
         </div>
     );
 };
