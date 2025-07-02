@@ -11,7 +11,6 @@ import { ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL } from '@/lib/constants';
 
 const ItemProgressBar: React.FC<{ label?: string; current: number; max: number; colorVar: string }> = ({ label, current, max, colorVar }) => {
     const percentage = max > 0 ? Math.min(100, Math.max(0, (current / max) * 100)) : 0;
-    // Check if the color var matches level 3 raw HSL
     const isLevel3 = colorVar === ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL[3];
     const textColor = isLevel3 ? 'text-black' : 'text-white';
 
@@ -44,14 +43,12 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
         instanceCurrentStrength, instanceMaxStrength,
         instanceCurrentCharges, instanceMaxCharges,
         instanceCurrentUses, instanceMaxUses,
-        instanceCurrentAlerts, instanceMaxAlerts,
         levelForVisuals,
     } = displayItem;
 
     React.useEffect(() => {
         console.log(`[ItemCard Render]: title='${displayItem.title}', level=${levelForVisuals}, colorVar='${colorVar}'`);
     }, [displayItem.title, levelForVisuals, colorVar]);
-
 
     const handleDeploy = () => {
         if((context.type === 'deploy_lock' || context.type === 'deploy_nexus') && displayItem.baseItem) {
@@ -117,14 +114,20 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
 
     const renderButtons = () => {
         let isRechargeable = false;
-        let isFull = false;
+        let isFull = true;
 
         if (baseItem) {
-            isRechargeable = baseItem.type === 'Rechargeable' || (baseItem.category === 'Hardware' && baseItem.maxRechargeInitiations && baseItem.maxRechargeInitiations > 0) || (baseItem.category === 'Nexus Upgrades' && baseItem.durability === 'Rechargeable');
+            isRechargeable = (baseItem.type === 'Rechargeable') || 
+                             (baseItem.category === 'Hardware' && (baseItem.maxRechargeInitiations || 0) > 0) ||
+                             (baseItem.category === 'Nexus Upgrades' && baseItem.durability === 'Rechargeable');
 
-            const current = instanceCurrentStrength ?? instanceCurrentCharges ?? instanceCurrentUses ?? instanceCurrentAlerts;
-            const max = instanceMaxStrength ?? instanceMaxCharges ?? instanceMaxUses ?? instanceMaxAlerts;
-            isFull = current !== undefined && max !== undefined && current >= max;
+            if (isRechargeable) {
+                const current = instanceCurrentStrength ?? instanceCurrentCharges ?? instanceCurrentUses;
+                const max = instanceMaxStrength ?? instanceMaxCharges ?? instanceMaxUses;
+                if(current !== undefined && max !== undefined) {
+                    isFull = current >= max;
+                }
+            }
         }
 
         switch (context.type) {
@@ -166,20 +169,19 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
                 backgroundColor: levelColorHsla,
             }}
         >
-            {/* --- FIXED TOP PART (Image) --- */}
-            <div className="w-full aspect-square bg-black/30 flex-shrink-0 relative">
-                <img
-                    src={imageSrc}
-                    alt={title}
-                    className="absolute inset-0 w-full h-full object-contain"
-                />
-            </div>
-            
-            {/* --- SCROLLABLE BOTTOM PART (Details) --- */}
-            <ScrollArea className="flex-grow w-full min-h-0">
+            <ScrollArea className="w-full h-full">
                 <div className="p-3 space-y-3 font-rajdhani">
+                    {/* Image Area */}
+                    <div className="w-full aspect-square bg-black/30 flex-shrink-0 relative rounded-md overflow-hidden">
+                        <img
+                            src={imageSrc}
+                            alt={title}
+                            className="absolute inset-0 w-full h-full object-contain"
+                        />
+                    </div>
+                    
                     {/* Title */}
-                    <h2 className="text-l font-orbitron text-center" style={{ color: levelColorHsl, wordWrap: 'break-word' }}>
+                    <h2 className="text-lg font-orbitron text-center" style={{ color: levelColorHsl, wordWrap: 'break-word' }}>
                         {title}
                     </h2>
 
@@ -192,7 +194,6 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
                                 {instanceMaxStrength !== undefined && <ItemProgressBar label="Strength" current={instanceCurrentStrength || 0} max={instanceMaxStrength} colorVar={colorVar} />}
                                 {instanceMaxCharges !== undefined && <ItemProgressBar label="Charges" current={instanceCurrentCharges || 0} max={instanceMaxCharges} colorVar={colorVar} />}
                                 {instanceMaxUses !== undefined && <ItemProgressBar label="Uses" current={instanceCurrentUses || 0} max={instanceMaxUses} colorVar={colorVar} />}
-                                {instanceMaxAlerts !== undefined && <ItemProgressBar label="Alerts" current={instanceCurrentAlerts || 0} max={instanceMaxAlerts} colorVar={colorVar} />}
                             </>
                         )}
                     </div>
