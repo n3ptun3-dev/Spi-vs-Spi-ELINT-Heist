@@ -48,7 +48,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
     } = displayItem;
 
     React.useEffect(() => {
-        console.log(`[ItemCard Render]: title='${displayItem.title}', level=${levelForVisuals}, colorVar='${colorVar}'`);
+        console.log(`[ItemCard] Rendering: '${displayItem.title}', Level: ${levelForVisuals}, ColorVar: '${colorVar}'`);
     }, [displayItem.title, levelForVisuals, colorVar]);
 
     const handleDeploy = () => {
@@ -171,9 +171,9 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
             }}
         >
             <ScrollArea className="w-full h-full">
-                <div className="font-rajdhani">
-                    {/* Image Container - No padding */}
-                    <div className="w-full aspect-square bg-black/30 flex-shrink-0 relative overflow-hidden">
+                <div className="w-[215px] font-rajdhani">
+                    {/* Image Container */}
+                    <div className="relative w-full aspect-square bg-black/30 flex-shrink-0">
                         <img
                             src={imageSrc}
                             alt={title}
@@ -182,9 +182,9 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
                     </div>
                     
                     {/* Content Wrapper with padding */}
-                    <div className="px-3 pb-3 space-y-3">
+                    <div className="w-full px-3 pb-3 space-y-3">
                         {/* Title */}
-                        <h2 className="text-lg font-orbitron text-center mt-2" style={{ color: levelColorHsl, wordWrap: 'break-word' }}>
+                        <h2 className="text-lg font-orbitron text-center mt-2 w-full break-words" style={{ color: levelColorHsl }}>
                             {title}
                         </h2>
 
@@ -208,12 +208,12 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
                         
                         {/* Description Section */}
                         <div className="space-y-2 text-sm text-muted-foreground border-t border-border/50 pt-3">
-                            <p className="break-words">{baseItem?.description}</p>
+                            <p className="w-full break-words">{baseItem?.description}</p>
                             {baseItem?.strength && <p><span className="font-semibold text-foreground">Strength:</span> {baseItem.strength.max}</p>}
                             {baseItem?.resistance && <p><span className="font-semibold text-foreground">Resistance:</span> {baseItem.resistance.max}</p>}
                             {baseItem?.type && <p><span className="font-semibold text-foreground">Type:</span> {baseItem.type}</p>}
                             {baseItem?.scarcity && <p><span className="font-semibold text-foreground">Scarcity:</span> {baseItem.scarcity}</p>}
-                            {baseItem?.lockTypeEffectiveness?.idealCounterAgainst && <p className="mt-2 p-2 border border-green-500/50 rounded-md bg-green-500/10 break-words"><span className="font-semibold text-green-300">Effective Against:</span> {baseItem.lockTypeEffectiveness.idealCounterAgainst.join(', ')}</p>}
+                            {baseItem?.lockTypeEffectiveness?.idealCounterAgainst && <p className="mt-2 p-2 border border-green-500/50 rounded-md bg-green-500/10 w-full break-words"><span className="font-semibold text-green-300">Effective Against:</span> {baseItem.lockTypeEffectiveness.idealCounterAgainst.join(', ')}</p>}
                         </div>
                     </div>
                 </div>
