@@ -1,7 +1,7 @@
 // src/components/game/tod/VaultSection.tsx
 
 "use client";
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useAppContext, type VaultSlot, type DisplayItem, type ItemCategory, type GameItemBase, type PlayerInventoryItem } from '@/contexts/AppContext';
 import { HolographicPanel, HolographicButton, HolographicInput } from '@/components/game/shared/HolographicPanel';
 import { ShieldCheck, ShieldOff, ShieldAlert, Edit3, Lock, Unlock, Sigma, MoreVertical } from 'lucide-react';
@@ -29,6 +29,7 @@ export function VaultSection({ parallaxOffset }: SectionProps) {
     openTODWindow,
     closeTODWindow,
     showConfirmation,
+    hideConfirmation,
     playerInventory,
     rechargeItem,
     fortifyLockSlot,
