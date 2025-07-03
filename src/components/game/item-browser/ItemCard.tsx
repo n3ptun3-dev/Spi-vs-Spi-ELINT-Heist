@@ -1,4 +1,3 @@
-
 // src/components/game/item-browser/ItemCard.tsx
 "use client";
 
@@ -53,7 +52,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({ displayItem, context, onClos
     React.useEffect(() => {
         const levelColorHsl = `hsl(${colorVar})`;
         const levelColorHsla = `hsla(${colorVar}, 0.3)`;
-        console.log(`[ItemCard] Rendering: '${displayItem.title}', Level: ${levelForVisuals}, ColorVar: '${colorVar}', HSL: '${levelColorHsl}', HSLA: '${levelColorHsla}'`);
+        console.log(`[ItemCard] Rendering: '${displayItem.title}', Level: ${levelForVisuals}, BG Color: '${levelColorHsla}'`);
     }, [displayItem.title, levelForVisuals, colorVar]);
 
     const handleDeploy = () => {

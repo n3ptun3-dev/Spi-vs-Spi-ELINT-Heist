@@ -16,15 +16,15 @@ export const ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL = {
   2: '120 60% 45%',  // Green
   3: '55 100% 50%',  // Yellow
   4: '30 100% 50%',  // Orange
-  5: '270 60% 55%',  // Purple
-  6: '0 100% 50%',   // Red
-  7: '180 100% 50%', // Cyan
-  8: '300 100% 50%', // Magenta
+  5: '0 100% 50%',   // Red
+  6: '180 100% 50%', // blue
+  7: '300 100% 50%', // Magenta  
+  8: '270 60% 55%',  // Purple
 };
 
 
 export const ITEM_LEVEL_COLORS_CSS_VARS = {
-  0: "var(--level-1-color)", // Mapping Level 0 to Level 1 color for display
+  0: "var(--level-1-color)",
   1: "var(--level-1-color)",
   2: "var(--level-2-color)",
   3: "var(--level-3-color)",
@@ -41,10 +41,10 @@ export const ITEM_LEVEL_AESTHETIC_SCHEMES = {
   "level-2-green": { name: "Level 2 (Green)", themeClass: "theme-level-2-green" },
   "level-3-yellow": { name: "Level 3 (Yellow)", themeClass: "theme-level-3-yellow" },
   "level-4-orange": { name: "Level 4 (Orange)", themeClass: "theme-level-4-orange" },
-  "level-5-purple": { name: "Level 5 (Purple)", themeClass: "theme-level-5-purple" },
-  "level-6-red": { name: "Level 6 (Red)", themeClass: "theme-level-6-red" },
-  "level-7-cyan": { name: "Level 7 (Cyan)", themeClass: "theme-level-7-cyan" },
-  "level-8-magenta": { name: "Level 8 (Magenta)", themeClass: "theme-level-8-magenta" },
+  "level-5-red": { name: "Level 6 (Red)", themeClass: "theme-level-6-red" },
+  "level-6-cyan": { name: "Level 7 (Cyan)", themeClass: "theme-level-7-cyan" },
+  "level-7-magenta": { name: "Level 8 (Magenta)", themeClass: "theme-level-8-magenta" },  
+  "level-8-purple": { name: "Level 5 (Purple)", themeClass: "theme-level-5-purple" },
 };
 
 export const XP_THRESHOLDS = [0, 100, 200, 400, 800, 1600, 3200, 6400, 12800]; // XP needed for next level (index is level, value is XP for that level)

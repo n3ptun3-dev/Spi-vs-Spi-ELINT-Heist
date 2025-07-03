@@ -224,6 +224,7 @@ interface AppContextType {
   offloadItem: (itemId: string) => Promise<boolean>;
   upgradeLock: (vaultSlotId: string, newItemId: string) => Promise<boolean>;
   fortifyLockSlot: (vaultSlotId: string, fortifierId: string) => Promise<boolean>;
+  removeFortifierFromSlot: (slotId: string) => Promise<boolean>;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -851,6 +852,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return false;
   }, [_currentPlayer, addMessage]);
 
+    const removeFortifierFromSlot = useCallback(async (slotId: string): Promise<boolean> => {
+        if (!_currentPlayer) return false;
+        const newVault = [..._currentPlayer.vault];
+        const newInventory = { ..._currentPlayer.inventory };
+        const slotIndex = newVault.findIndex(s => s.id === slotId);
+        if (slotIndex === -1 || !newVault[slotIndex].fortifier) {
+            addMessage({ type: 'error', text: 'Fortifier or slot not found.' });
+            return false;
+        }
+        const fortifierToRemove = newVault[slotIndex].fortifier!;
+        const fortifierBase = getItemById(fortifierToRemove.id);
+        if (newInventory[fortifierToRemove.id]) {
+            newInventory[fortifierToRemove.id].quantity += 1;
+        } else {
+            newInventory[fortifierToRemove.id] = {
+                id: fortifierToRemove.id,
+                quantity: 1,
+                currentStrength: fortifierToRemove.currentStrength,
+                currentCharges: fortifierToRemove.currentCharges,
+            };
+        }
+        newVault[slotIndex].fortifier = null;
+        const playerAfterUpdate = await updatePlayer({ ..._currentPlayer, vault: newVault, inventory: newInventory });
+        if (playerAfterUpdate) {
+            _setCurrentPlayer(playerAfterUpdate);
+            addMessage({ type: 'notification', text: `${fortifierBase?.name} returned to inventory.` });
+            return true;
+        }
+        return false;
+    }, [_currentPlayer, addMessage]);
+
 
   const contextValue = useMemo(() => ({
     currentPlayer: _currentPlayer,
@@ -919,6 +951,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     offloadItem,
     upgradeLock,
     fortifyLockSlot,
+    removeFortifierFromSlot,
   }), [
     _currentPlayer, _isLoading, _isPiBrowser, _onboardingStep, _messages, _dailyTeamCode, _pendingPiId,
     _isTODWindowOpen, _todWindowTitle, _todWindowContent, _todWindowOptions,
@@ -932,7 +965,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     openItemSlider,
     _opponentVaultState, openOpponentVault, closeOpponentVault,
     _confirmationState, showConfirmation, hideConfirmation,
-    rechargeItem, offloadItem, upgradeLock, fortifyLockSlot
+    rechargeItem, offloadItem, upgradeLock, fortifyLockSlot, removeFortifierFromSlot
   ]);
 
   return (

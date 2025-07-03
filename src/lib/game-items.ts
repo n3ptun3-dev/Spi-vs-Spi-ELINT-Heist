@@ -205,7 +205,7 @@ function generateItemLevels<K extends GameItemBase>( // K is the specific item t
     
     let fileExtension: 'jpg' | 'png' = 'png';
     const jpgPriorityHardwareItems = [
-      'cypher_lock', 'quantum_entanglement_lock', 'reinforced_deadbolt', 'sonic_pulse_lock',
+      'cypher_lock', 'quantum_entanglement_lock', 'reinforced_deadbolt', 'sonic_pulse_lock', 'dummy_node', 'feedback_loop', 'sonic_dampener', 
     ];
 
     if (commonProps.category === 'Hardware' && jpgPriorityHardwareItems.includes(baseId)) {

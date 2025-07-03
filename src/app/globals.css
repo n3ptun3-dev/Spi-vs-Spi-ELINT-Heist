@@ -180,10 +180,10 @@
     --level-3-color-hsl: 55 100% 50%;  /* Yellow */
     --level-3-text-color-hsl: 0 0% 0%; /* Black text for yellow bg */
     --level-4-color-hsl: 30 100% 50%;  /* Orange */
-    --level-5-color-hsl: 270 60% 55%;  /* Purple */
-    --level-6-color-hsl: 0 100% 50%;   /* Red */
-    --level-7-color-hsl: 180 100% 50%; /* Cyan */
-    --level-8-color-hsl: 300 100% 50%; /* Magenta */
+    --level-5-color-hsl: 0 100% 50%;   /* Red */
+    --level-6-color-hsl: 180 100% 50%; /* Blue */
+    --level-7-color-hsl: 300 100% 50%; /* Magenta */
+    --level-8-color-hsl: 270 60% 55%;  /* Purple */
 
     --level-1-color: hsl(var(--level-1-color-hsl));
     --level-2-color: hsl(var(--level-2-color-hsl));
