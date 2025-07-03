@@ -378,7 +378,7 @@ export function VaultSection({ parallaxOffset }: SectionProps) {
                         <div className="h-full bg-green-500" style={{ width: `${(slot.item.currentStrength || 0) / itemDetails.strength.max * 100}%`}}></div>
                       </div>
                     )}
-                    {slot.fortifier && (
+                    {slot.fortifier && slot.fortifier.id && getBaseItemByIdFromGameItems(slot.fortifier.id) && (
                       <div className="absolute top-1 right-1 w-6 h-6 rounded-full border-2" style={{borderColor: `hsl(${ITEM_LEVEL_COLORS_CSS_VARS_RAW_HSL[getBaseItemByIdFromGameItems(slot.fortifier.id)!.level]})`}}>
                          <img src={getBaseItemByIdFromGameItems(slot.fortifier.id)?.imageSrc} alt="Fortifier" className="w-full h-full object-cover rounded-full" />
                       </div>
